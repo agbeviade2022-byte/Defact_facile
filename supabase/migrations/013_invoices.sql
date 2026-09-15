@@ -57,3 +57,9 @@ create index invoices_status_due_idx on public.invoices(status, due_date);
 alter table public.quotes
   add constraint quotes_converted_invoice_fk
   foreign key (converted_invoice_id) references public.invoices(id) on delete set null;
+
+-- Financial documents are never physically deleted (even by the service role):
+-- use status transitions (CANCELLED / VOID / ARCHIVED) with audit instead.
+create trigger invoices_no_hard_delete
+  before delete on public.invoices
+  for each row execute function public.forbid_hard_delete();

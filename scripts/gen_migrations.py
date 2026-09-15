@@ -40,6 +40,15 @@ create index {t}_organization_idx on public.{t}(organization_id) where organizat
 """
 
 
+NO_HARD_DELETE = """
+-- Financial documents are never physically deleted (even by the service role):
+-- use status transitions (CANCELLED / VOID / ARCHIVED) with audit instead.
+create trigger {t}_no_hard_delete
+  before delete on public.{t}
+  for each row execute function public.forbid_hard_delete();
+"""
+
+
 def tenant_table(t: str, body: str, desc: str, extra: str = "") -> str:
     return (
         HEADER.format(name=f"{t}", desc=desc)
@@ -244,6 +253,26 @@ create trigger set_organization_members_updated_at
   before update on public.organization_members
   for each row execute function public.set_updated_at();
 
+-- A membership may only use a system role or a custom role of the same organization.
+create or replace function public.check_member_role_scope()
+returns trigger language plpgsql as $$
+declare
+  role_org uuid;
+  role_is_system boolean;
+begin
+  select organization_id, is_system into role_org, role_is_system
+    from public.roles where id = new.role_id;
+  if role_is_system is distinct from true and role_org is distinct from new.organization_id then
+    raise exception 'role % does not belong to organization %', new.role_id, new.organization_id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger organization_members_role_scope
+  before insert or update of role_id, organization_id on public.organization_members
+  for each row execute function public.check_member_role_scope();
+
 -- Helper used by RLS policies: does the current JWT user belong to this organization?
 create or replace function public.is_org_member(org uuid)
 returns boolean language sql stable security definer set search_path = public as $$
@@ -354,6 +383,15 @@ MIGRATIONS["011_quotes.sql"] = tenant_table(
   version integer not null default 1,""",
     "Quotes (devis). Totals are computed server-side, never by the client or an LLM.",
     """
+create or replace function public.forbid_hard_delete()
+returns trigger language plpgsql as $$
+begin
+  raise exception '% rows are never hard-deleted; use a status transition (CANCELLED/VOID/ARCHIVED)', tg_table_name;
+end;
+$$;
+"""
+    + NO_HARD_DELETE.format(t="quotes")
+    + """
 create unique index quotes_number_per_org on public.quotes(organization_id, number) where organization_id is not null;
 create unique index quotes_number_per_ws on public.quotes(personal_workspace_id, number) where personal_workspace_id is not null;
 create index quotes_customer_idx on public.quotes(customer_id);
@@ -420,7 +458,8 @@ create index invoices_status_due_idx on public.invoices(status, due_date);
 alter table public.quotes
   add constraint quotes_converted_invoice_fk
   foreign key (converted_invoice_id) references public.invoices(id) on delete set null;
-""",
+"""
+    + NO_HARD_DELETE.format(t="invoices"),
 )
 
 MIGRATIONS["014_invoice_items.sql"] = HEADER.format(name="014_invoice_items", desc="Invoice line items.") + f"""
@@ -475,7 +514,8 @@ create unique index sales_number_per_ws on public.sales(personal_workspace_id, n
 
 alter table public.invoices add constraint invoices_sale_fk foreign key (sale_id) references public.sales(id) on delete set null;
 alter table public.payments add constraint payments_sale_fk foreign key (sale_id) references public.sales(id) on delete set null;
-""",
+"""
+    + NO_HARD_DELETE.format(t="sales"),
 )
 
 MIGRATIONS["017_sale_items.sql"] = HEADER.format(name="017_sale_items", desc="Sale line items.") + f"""

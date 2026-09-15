@@ -22,6 +22,26 @@ create trigger set_organization_members_updated_at
   before update on public.organization_members
   for each row execute function public.set_updated_at();
 
+-- A membership may only use a system role or a custom role of the same organization.
+create or replace function public.check_member_role_scope()
+returns trigger language plpgsql as $$
+declare
+  role_org uuid;
+  role_is_system boolean;
+begin
+  select organization_id, is_system into role_org, role_is_system
+    from public.roles where id = new.role_id;
+  if role_is_system is distinct from true and role_org is distinct from new.organization_id then
+    raise exception 'role % does not belong to organization %', new.role_id, new.organization_id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger organization_members_role_scope
+  before insert or update of role_id, organization_id on public.organization_members
+  for each row execute function public.check_member_role_scope();
+
 -- Helper used by RLS policies: does the current JWT user belong to this organization?
 create or replace function public.is_org_member(org uuid)
 returns boolean language sql stable security definer set search_path = public as $$

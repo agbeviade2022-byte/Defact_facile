@@ -42,3 +42,9 @@ create unique index sales_number_per_ws on public.sales(personal_workspace_id, n
 
 alter table public.invoices add constraint invoices_sale_fk foreign key (sale_id) references public.sales(id) on delete set null;
 alter table public.payments add constraint payments_sale_fk foreign key (sale_id) references public.sales(id) on delete set null;
+
+-- Financial documents are never physically deleted (even by the service role):
+-- use status transitions (CANCELLED / VOID / ARCHIVED) with audit instead.
+create trigger sales_no_hard_delete
+  before delete on public.sales
+  for each row execute function public.forbid_hard_delete();

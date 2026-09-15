@@ -42,6 +42,19 @@ create trigger set_quotes_updated_at
   before update on public.quotes
   for each row execute function public.set_updated_at();
 
+create or replace function public.forbid_hard_delete()
+returns trigger language plpgsql as $$
+begin
+  raise exception '% rows are never hard-deleted; use a status transition (CANCELLED/VOID/ARCHIVED)', tg_table_name;
+end;
+$$;
+
+-- Financial documents are never physically deleted (even by the service role):
+-- use status transitions (CANCELLED / VOID / ARCHIVED) with audit instead.
+create trigger quotes_no_hard_delete
+  before delete on public.quotes
+  for each row execute function public.forbid_hard_delete();
+
 create unique index quotes_number_per_org on public.quotes(organization_id, number) where organization_id is not null;
 create unique index quotes_number_per_ws on public.quotes(personal_workspace_id, number) where personal_workspace_id is not null;
 create index quotes_customer_idx on public.quotes(customer_id);
