@@ -1,0 +1,38 @@
+# Secrets — never commit real env files
+.env
+.env.*
+!.env.example
+!.env.test
+**/env/*.local.json
+
+# Node / NestJS
+node_modules/
+dist/
+coverage/
+*.log
+npm-debug.log*
+
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+mobile/flutter_app/ios/Pods/
+mobile/flutter_app/ios/.symlinks/
+mobile/flutter_app/android/.gradle/
+mobile/flutter_app/android/local.properties
+mobile/flutter_app/android/key.properties
+*.jks
+*.keystore
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+
+# Python helper scripts
+__pycache__/
