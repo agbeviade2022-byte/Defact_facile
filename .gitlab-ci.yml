@@ -30,6 +30,7 @@ mobile:
     - dart format --output=none --set-exit-if-changed lib test
     - flutter analyze --fatal-infos
     - flutter test
+    - flutter config --enable-web
     - flutter build web --release --dart-define-from-file=env/development.json
 
 database:
