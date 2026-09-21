@@ -30,6 +30,7 @@ export const envSchema = z
     GENIUSPAY_API_KEY: z.string().optional(),
     GENIUSPAY_API_SECRET: z.string().optional(),
     GENIUSPAY_SANDBOX: z.enum(['true', 'false']).default('true'),
+    AI_TOKEN_MULTIPLIER: z.coerce.number().int().positive().default(10),
 
     WHATSAPP_API_KEY: z.string().optional(),
     FNE_API_URL: z.string().url().optional(),

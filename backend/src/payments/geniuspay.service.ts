@@ -33,6 +33,8 @@ export class GeniusPayService {
     if (body.subscriptionId && workspaceId) {
       await this.assertSubscriptionAccess(userId, workspaceId, body.subscriptionId);
     }
+    const tokens =
+      body.kind === 'AI_TOP_UP' ? body.amount * this.config.get('AI_TOKEN_MULTIPLIER') : undefined;
 
     const internalReference = `DEF-${randomUUID()}`;
     const { error: pendingError } = await this.supabase.admin.from('billing_payments').insert({
@@ -63,6 +65,7 @@ export class GeniusPayService {
           kind: body.kind,
           subscription_id: body.subscriptionId ?? null,
           internal_reference: internalReference,
+          tokens,
         },
       }),
     });

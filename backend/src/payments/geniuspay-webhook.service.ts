@@ -30,7 +30,7 @@ export class GeniusPayWebhookService {
     const status = this.statusForEvent(eventName);
     const { data: existing, error: lookupError } = await this.supabase.admin
       .from('billing_payments')
-      .select('id, status, provider_reference, amount, user_id, kind, subscription_id')
+      .select('id, status, provider_reference, amount, user_id, kind, subscription_id, metadata')
       .eq('provider', 'GENIUSPAY')
       .eq('provider_reference', reference)
       .maybeSingle();
@@ -40,9 +40,13 @@ export class GeniusPayWebhookService {
       if (existing.status !== status) {
         throw new BadRequestException('Transition de paiement GeniusPay contradictoire.');
       }
+      if (status === 'SUCCEEDED' && existing.kind === 'AI_TOP_UP') {
+        await this.applyTopUp(existing.metadata, userId, reference);
+      }
       return { received: true, payment: existing };
     }
     const amount = this.readNumber(data, 'amount');
+    const kind = this.readString(metadata, 'kind') === 'AI_TOP_UP' ? 'AI_TOP_UP' : 'SUBSCRIPTION';
     if (
       (amount !== undefined && Number(existing.amount) !== amount) ||
       existing.user_id !== userId
@@ -60,8 +64,9 @@ export class GeniusPayWebhookService {
           provider: 'GENIUSPAY',
           provider_reference: reference,
           status,
-          kind: this.readString(metadata, 'kind') === 'AI_TOP_UP' ? 'AI_TOP_UP' : 'SUBSCRIPTION',
+          kind,
           subscription_id: this.readString(metadata, 'subscription_id'),
+          metadata,
           confirmed_at: status === 'SUCCEEDED' ? new Date().toISOString() : null,
         },
         { onConflict: 'provider,provider_reference' },
@@ -71,6 +76,9 @@ export class GeniusPayWebhookService {
 
     if (error) throw new BadRequestException('Webhook GeniusPay invalide.');
     if (status === 'SUCCEEDED') {
+      if (kind === 'AI_TOP_UP') {
+        await this.applyTopUp(metadata, userId, reference);
+      }
       const subscriptionId = this.readString(metadata, 'subscription_id');
       if (subscriptionId) {
         const { data: subscription } = await this.supabase.admin
@@ -139,6 +147,25 @@ export class GeniusPayWebhookService {
     if (received !== expected || (header && payload && header !== payload)) {
       throw new BadRequestException('Environnement GeniusPay invalide.');
     }
+  }
+
+  private async applyTopUp(
+    metadata: Record<string, unknown>,
+    userId: string,
+    reference: string,
+  ): Promise<void> {
+    const tokens = this.readNumber(metadata, 'tokens');
+    if (!tokens || tokens <= 0) {
+      throw new BadRequestException('Recharge IA invalide.');
+    }
+    const { error } = await this.supabase.admin.rpc('credit_ai_top_up', {
+      p_user_id: userId,
+      p_amount: Math.floor(tokens),
+      p_provider: 'GENIUSPAY',
+      p_provider_reference: reference,
+      p_idempotency_key: `topup:${reference}`,
+    });
+    if (error) throw new BadRequestException('Crédit de la recharge IA impossible.');
   }
 
   private parsePayload(rawBody: string): Record<string, unknown> {
