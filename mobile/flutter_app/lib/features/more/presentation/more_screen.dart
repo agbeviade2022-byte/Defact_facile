@@ -31,6 +31,15 @@ class MoreScreen extends StatelessWidget {
               onTap: () => context.push(AppRoutes.plans),
             ),
           ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: const Text('Wallet IA'),
+              subtitle: const Text('Consulter et recharger vos crédits'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.aiWallet),
+            ),
+          ),
         ],
       ),
     );

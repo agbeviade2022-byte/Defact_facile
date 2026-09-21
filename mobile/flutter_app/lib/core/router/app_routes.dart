@@ -6,6 +6,7 @@ abstract final class AppRoutes {
   static const String onboarding = '/onboarding';
   static const String workspaces = '/workspaces';
   static const String plans = '/plans';
+  static const String aiWallet = '/ai-wallet';
 
   // Personal workspace: Accueil / Devis / Factures / Clients / Plus
   static const String personalHome = '/p/home';

@@ -1,10 +1,36 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { GeniusPayService } from '../payments/geniuspay.service';
 import { AiCompletionResult } from './ai-provider';
 
 @Injectable()
 export class AiWalletService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly geniusPay: GeniusPayService,
+  ) {}
+
+  async balance(userId: string) {
+    const { data, error } = await this.supabase.admin
+      .from('ai_wallets')
+      .select('balance, lifetime_credited, lifetime_consumed')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw new InternalServerErrorException('Solde IA indisponible.');
+    return {
+      balance: data?.balance ?? 0,
+      lifetimeCredited: data?.lifetime_credited ?? 0,
+      lifetimeConsumed: data?.lifetime_consumed ?? 0,
+    };
+  }
+
+  createTopUp(userId: string, amount: 1000 | 5000 | 10000 | 25000) {
+    return this.geniusPay.createPayment(userId, undefined, {
+      amount,
+      kind: 'AI_TOP_UP',
+      description: `Recharge wallet IA ${amount} XOF DEFACT FACILE`,
+    });
+  }
 
   async grantFreeBonus(userId: string): Promise<string> {
     const { data, error } = await this.supabase.admin.rpc('grant_free_ai_bonus', {
