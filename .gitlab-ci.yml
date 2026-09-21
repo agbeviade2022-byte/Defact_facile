@@ -23,7 +23,7 @@ backend:
 
 mobile:
   stage: validate
-  image: ghcr.io/cirruslabs/flutter:3.47.5
+  image: gmeligio/flutter-linux:3.47.5
   script:
     - cd mobile/flutter_app
     - flutter pub get
@@ -65,7 +65,7 @@ secrets-scan:
 
 android-apk:
   stage: build
-  image: ghcr.io/cirruslabs/flutter:3.47.5
+  image: gmeligio/flutter-android:3.47.5
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
