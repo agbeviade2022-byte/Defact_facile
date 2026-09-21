@@ -29,6 +29,9 @@ abstract final class AppConfig {
   static const String defaultCurrency = 'XOF';
   static const String defaultLocale = 'fr';
 
+  static bool get hasSupabaseConfig =>
+      supabaseUrl.startsWith('https://') && supabaseAnonKey.isNotEmpty;
+
   static AppEnvironment get environment => switch (_env) {
     'production' => AppEnvironment.production,
     'staging' => AppEnvironment.staging,

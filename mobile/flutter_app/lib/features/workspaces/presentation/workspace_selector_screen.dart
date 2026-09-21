@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/auth_service.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -8,13 +10,26 @@ import '../../../core/theme/app_typography.dart';
 
 /// Lets the user pick between the personal workspace and one of the
 /// organizations they belong to. Real data comes with Mission 03.
-class WorkspaceSelectorScreen extends StatelessWidget {
+class WorkspaceSelectorScreen extends ConsumerWidget {
   const WorkspaceSelectorScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.read(authServiceProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Choisir un espace')),
+      appBar: AppBar(
+        title: const Text('Choisir un espace'),
+        actions: [
+          IconButton(
+            tooltip: 'Se déconnecter',
+            onPressed: () async {
+              await auth.signOut();
+              if (context.mounted) context.go(AppRoutes.login);
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: ListView(
         padding: AppSpacing.screen,
         children: [

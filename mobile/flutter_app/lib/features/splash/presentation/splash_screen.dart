@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/auth/auth_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 
-/// Entry screen. Session restoration will be wired in Mission 02 (auth);
-/// for now it forwards to the login route so the routing graph is exercised.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -21,7 +21,12 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.go(AppRoutes.login);
+      final hasSession =
+          supabaseInitialized &&
+          Supabase.instance.client.auth.currentSession != null;
+      if (mounted) {
+        context.go(hasSession ? AppRoutes.workspaces : AppRoutes.login);
+      }
     });
   }
 

@@ -1,15 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/auth_service.dart';
 import '../config/app_config.dart';
 
 /// Header carrying the active workspace. The backend validates it against the
 /// user's memberships; the client only declares intent.
 const String workspaceHeader = 'X-Workspace-Id';
-
-/// Supplies the bearer token for API calls. Replaced by the Supabase session
-/// provider in Mission 02; `null` means anonymous.
-final accessTokenProvider = Provider<String?>((_) => null);
 
 /// Active workspace id (personal workspace or organization). Set in Mission 03.
 final activeWorkspaceIdProvider = Provider<String?>((_) => null);
