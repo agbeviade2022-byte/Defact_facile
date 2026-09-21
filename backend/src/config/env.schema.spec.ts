@@ -33,6 +33,12 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, NODE_ENV: 'prod' })).toThrow(/NODE_ENV/);
   });
 
+  it('treats empty optional values as unset', () => {
+    const env = validateEnv({ ...validEnv, FNE_API_URL: '', RESEND_API_KEY: '' });
+    expect(env.FNE_API_URL).toBeUndefined();
+    expect(env.RESEND_API_KEY).toBeUndefined();
+  });
+
   it('rejects wildcard CORS in production', () => {
     expect(() => validateEnv({ ...validEnv, NODE_ENV: 'production' })).toThrow(/CORS_ORIGINS/);
     const env = validateEnv({

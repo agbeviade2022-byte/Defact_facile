@@ -44,7 +44,11 @@ export const envSchema = z
 export type Env = z.infer<typeof envSchema>;
 
 export function validateEnv(raw: Record<string, unknown>): Env {
-  const result = envSchema.safeParse(raw);
+  // Empty values (e.g. `KEY=` copied from .env.example) count as unset.
+  const cleaned = Object.fromEntries(
+    Object.entries(raw).filter(([, v]) => !(typeof v === 'string' && v.trim() === '')),
+  );
+  const result = envSchema.safeParse(cleaned);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  - ${i.path.join('.')}: ${i.message}`)

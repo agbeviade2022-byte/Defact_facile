@@ -1,6 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  RealtimeClientOptions,
+  SupabaseClient,
+  SupabaseClientOptions,
+} from '@supabase/supabase-js';
+import { WebSocket } from 'ws';
 import { AppConfigService } from '../config/app-config.service';
+
+// supabase-js requires a WebSocket transport at construction time; Node < 22 has none.
+const serverOptions: SupabaseClientOptions<'public'> = {
+  auth: { persistSession: false, autoRefreshToken: false },
+  realtime: { transport: WebSocket as unknown as NonNullable<RealtimeClientOptions['transport']> },
+};
 
 /**
  * Two kinds of clients:
@@ -17,7 +29,7 @@ export class SupabaseService {
     this.adminClient = createClient(
       config.get('SUPABASE_URL'),
       config.get('SUPABASE_SERVICE_ROLE_KEY'),
-      { auth: { persistSession: false, autoRefreshToken: false } },
+      serverOptions,
     );
   }
 
@@ -27,7 +39,7 @@ export class SupabaseService {
 
   forUser(accessToken: string): SupabaseClient {
     return createClient(this.config.get('SUPABASE_URL'), this.config.get('SUPABASE_ANON_KEY'), {
-      auth: { persistSession: false, autoRefreshToken: false },
+      ...serverOptions,
       global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
   }
