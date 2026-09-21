@@ -21,11 +21,17 @@ export class GeniusPayService {
     private readonly supabase: SupabaseService,
   ) {}
 
-  async createPayment(userId: string, body: GeniusPayPaymentDto) {
+  async createPayment(userId: string, workspaceId: string | undefined, body: GeniusPayPaymentDto) {
     const apiKey = this.config.get('GENIUSPAY_API_KEY');
     const apiSecret = this.config.get('GENIUSPAY_API_SECRET');
     if (!apiKey || !apiSecret) {
       throw new ServiceUnavailableException('GeniusPay est indisponible.');
+    }
+    if (body.kind === 'SUBSCRIPTION' && (!body.subscriptionId || !workspaceId)) {
+      throw new BadRequestException('Workspace et abonnement requis.');
+    }
+    if (body.subscriptionId && workspaceId) {
+      await this.assertSubscriptionAccess(userId, workspaceId, body.subscriptionId);
     }
 
     const internalReference = `DEF-${randomUUID()}`;
@@ -82,5 +88,38 @@ export class GeniusPayService {
       paymentUrl: payment.payment_url ?? payment.checkout_url,
       status: payment.status ?? 'pending',
     };
+  }
+
+  private async assertSubscriptionAccess(
+    userId: string,
+    workspaceId: string,
+    subscriptionId: string,
+  ): Promise<void> {
+    const { data: subscription, error } = await this.supabase.admin
+      .from('subscriptions')
+      .select('id, personal_workspace_id, organization_id')
+      .eq('id', subscriptionId)
+      .maybeSingle();
+    if (error || !subscription) throw new BadRequestException('Abonnement introuvable.');
+    if (subscription.personal_workspace_id && subscription.personal_workspace_id === workspaceId) {
+      const { data: workspace } = await this.supabase.admin
+        .from('personal_workspaces')
+        .select('id')
+        .eq('id', workspaceId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (workspace) return;
+    }
+    if (subscription.organization_id === workspaceId) {
+      const { data: membership } = await this.supabase.admin
+        .from('organization_members')
+        .select('id')
+        .eq('organization_id', workspaceId)
+        .eq('user_id', userId)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+      if (membership) return;
+    }
+    throw new BadRequestException('Accès à cet abonnement refusé.');
   }
 }

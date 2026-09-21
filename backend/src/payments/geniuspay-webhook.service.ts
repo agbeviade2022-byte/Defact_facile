@@ -15,16 +15,19 @@ export class GeniusPayWebhookService {
     signature: string | undefined,
     timestamp: string | undefined,
     event: string | undefined,
+    environment?: string,
   ) {
     this.verifySignature(rawBody, signature, timestamp);
     const payload = this.parsePayload(rawBody);
+    this.verifyEnvironment(environment, this.readString(payload, 'environment'));
     const data = this.readObject(payload, 'data');
     const metadata = this.readObject(data, 'metadata');
     const reference = this.readString(data, 'reference');
     const userId = this.readString(metadata, 'user_id');
     if (!reference || !userId) throw new BadRequestException('Webhook GeniusPay incomplet.');
 
-    const status = this.statusForEvent(event);
+    const eventName = event ?? this.readString(payload, 'event');
+    const status = this.statusForEvent(eventName);
     const { data: existing, error: lookupError } = await this.supabase.admin
       .from('billing_payments')
       .select('id, status, provider_reference')
@@ -109,7 +112,16 @@ export class GeniusPayWebhookService {
     ) {
       return 'CANCELLED';
     }
-    return 'PENDING';
+    throw new BadRequestException('Événement GeniusPay non supporté.');
+  }
+
+  private verifyEnvironment(header: string | undefined, payload: string | undefined): void {
+    const received = header ?? payload;
+    if (!received) return;
+    const expected = this.config.get('GENIUSPAY_SANDBOX') === 'true' ? 'sandbox' : 'live';
+    if (received !== expected || (header && payload && header !== payload)) {
+      throw new BadRequestException('Environnement GeniusPay invalide.');
+    }
   }
 
   private parsePayload(rawBody: string): Record<string, unknown> {

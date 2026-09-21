@@ -16,9 +16,10 @@ export class GeniusPayWebhookController {
     @Headers('x-webhook-signature') signature?: string,
     @Headers('x-webhook-timestamp') timestamp?: string,
     @Headers('x-webhook-event') event?: string,
+    @Headers('x-webhook-environment') environment?: string,
   ) {
     const rawBody = request.rawBody?.toString('utf8');
     if (!rawBody) throw new BadRequestException('Raw webhook body is required.');
-    return this.webhook.handle(rawBody, signature, timestamp, event);
+    return this.webhook.handle(rawBody, signature, timestamp, event, environment);
   }
 }
