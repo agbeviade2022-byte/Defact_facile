@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
@@ -57,6 +58,7 @@ class AuthService {
   final SupabaseClient? _client;
   final Ref _ref;
   late final StreamSubscription<AuthState>? _authSubscription;
+  bool _googleInitialized = false;
 
   bool get isConfigured => _client != null;
 
@@ -81,12 +83,45 @@ class AuthService {
 
   Future<bool> signInWithGoogle() async {
     _requireClient();
-    return _client!.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: kIsWeb
-          ? Uri.base.origin
-          : 'io.supabase.flutter://login-callback/',
+    if (kIsWeb) {
+      return _client!.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: Uri.base.origin,
+      );
+    }
+
+    if (AppConfig.googleWebClientId.isEmpty) {
+      throw AuthException('Google Auth n’est pas configuré.');
+    }
+
+    final googleSignIn = GoogleSignIn.instance;
+    if (!_googleInitialized) {
+      await googleSignIn.initialize(
+        serverClientId: AppConfig.googleWebClientId,
+      );
+      _googleInitialized = true;
+    }
+
+    final googleUser = await googleSignIn.authenticate();
+    final authorization =
+        await googleUser.authorizationClient.authorizationForScopes(
+          const ['email', 'profile'],
+        ) ??
+        await googleUser.authorizationClient.authorizeScopes(
+          const ['email', 'profile'],
+        );
+    final idToken = googleUser.authentication.idToken;
+    if (idToken == null) {
+      throw AuthException('Google n’a pas fourni de jeton d’identité.');
+    }
+
+    final response = await _client!.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: authorization.accessToken,
     );
+    _setAccessToken(response.session?.accessToken);
+    return response.session != null;
   }
 
   Future<void> signOut() async {

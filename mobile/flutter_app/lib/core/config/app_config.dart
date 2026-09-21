@@ -24,6 +24,10 @@ abstract final class AppConfig {
     'SUPABASE_ANON_KEY',
   );
 
+  static const String googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+  );
+
   static const String appName = 'DEFACT FACILE';
   static const String tagline = 'Devis. Factures. Gestion. Facile.';
   static const String defaultCurrency = 'XOF';

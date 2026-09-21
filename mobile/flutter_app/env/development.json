@@ -2,5 +2,6 @@
   "APP_ENV": "development",
   "API_BASE_URL": "http://localhost:3000/api/v1",
   "SUPABASE_URL": "http://localhost:54321",
-  "SUPABASE_ANON_KEY": ""
+  "SUPABASE_ANON_KEY": "",
+  "GOOGLE_WEB_CLIENT_ID": "43496767135-76ck11q98ljbg9m4b5qlfb1m2frofrfp.apps.googleusercontent.com"
 }
