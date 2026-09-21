@@ -49,32 +49,48 @@ export class GeniusPayService {
     });
     if (pendingError) throw new BadRequestException('Paiement local impossible à enregistrer.');
 
-    const response = await fetch(`${this.config.get('GENIUSPAY_API_URL')}/payments`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'x-api-secret': apiSecret,
-      },
-      body: JSON.stringify({
-        amount: body.amount,
-        currency: 'XOF',
-        description: body.description ?? 'DEFACT FACILE',
-        metadata: {
-          user_id: userId,
-          kind: body.kind,
-          subscription_id: body.subscriptionId ?? null,
-          internal_reference: internalReference,
-          tokens,
+    let response: Response;
+    try {
+      response = await fetch(`${this.config.get('GENIUSPAY_API_URL')}/payments`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': apiKey,
+          'x-api-secret': apiSecret,
         },
-      }),
-    });
-    if (!response.ok) throw new ServiceUnavailableException('GeniusPay a échoué.');
+        body: JSON.stringify({
+          amount: body.amount,
+          currency: 'XOF',
+          description: body.description ?? 'DEFACT FACILE',
+          metadata: {
+            user_id: userId,
+            kind: body.kind,
+            subscription_id: body.subscriptionId ?? null,
+            internal_reference: internalReference,
+            tokens,
+          },
+        }),
+      });
+    } catch {
+      await this.markPaymentFailed(internalReference);
+      throw new ServiceUnavailableException('GeniusPay a échoué.');
+    }
+    if (!response.ok) {
+      await this.markPaymentFailed(internalReference);
+      throw new ServiceUnavailableException('GeniusPay a échoué.');
+    }
 
-    const result = (await response.json()) as GeniusPayCreateResponse;
+    let result: GeniusPayCreateResponse;
+    try {
+      result = (await response.json()) as GeniusPayCreateResponse;
+    } catch {
+      await this.markPaymentFailed(internalReference);
+      throw new BadRequestException('Réponse GeniusPay invalide.');
+    }
     const payment = result.data;
     const reference = payment?.reference;
     if (!result.success || !payment || !reference || !payment.checkout_url) {
+      await this.markPaymentFailed(internalReference);
       throw new BadRequestException('Réponse GeniusPay invalide.');
     }
 
@@ -83,7 +99,10 @@ export class GeniusPayService {
       .update({ provider_reference: reference })
       .eq('provider', 'GENIUSPAY')
       .eq('provider_reference', internalReference);
-    if (error) throw new BadRequestException('Paiement local impossible à enregistrer.');
+    if (error) {
+      await this.markPaymentFailed(internalReference);
+      throw new BadRequestException('Paiement local impossible à enregistrer.');
+    }
 
     return {
       reference,
@@ -127,5 +146,14 @@ export class GeniusPayService {
       if (membership) return;
     }
     throw new BadRequestException('Accès à cet abonnement refusé.');
+  }
+
+  private async markPaymentFailed(providerReference: string): Promise<void> {
+    await this.supabase.admin
+      .from('billing_payments')
+      .update({ status: 'FAILED' })
+      .eq('provider', 'GENIUSPAY')
+      .eq('provider_reference', providerReference)
+      .eq('status', 'PENDING');
   }
 }
