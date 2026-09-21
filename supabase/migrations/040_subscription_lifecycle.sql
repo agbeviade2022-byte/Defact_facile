@@ -138,3 +138,7 @@ begin
   return v_wallet_id;
 end;
 $$;
+
+create unique index if not exists billing_pending_subscription_unique
+  on public.billing_payments(subscription_id)
+  where kind = 'SUBSCRIPTION' and status = 'PENDING';

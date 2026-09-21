@@ -100,10 +100,13 @@ export class GeniusPayService {
   ): Promise<void> {
     const { data: subscription, error } = await this.supabase.admin
       .from('subscriptions')
-      .select('id, personal_workspace_id, organization_id')
+      .select('id, personal_workspace_id, organization_id, status')
       .eq('id', subscriptionId)
       .maybeSingle();
     if (error || !subscription) throw new BadRequestException('Abonnement introuvable.');
+    if (subscription.status === 'ACTIVE') {
+      throw new BadRequestException('Cet abonnement est déjà actif.');
+    }
     if (subscription.personal_workspace_id && subscription.personal_workspace_id === workspaceId) {
       const { data: workspace } = await this.supabase.admin
         .from('personal_workspaces')
