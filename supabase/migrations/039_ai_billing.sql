@@ -2,6 +2,30 @@
 -- User wallets, strict AI reservations, payments, and provider cost tracking.
 
 
+alter table public.plans
+  add column if not exists ai_budget_xof numeric(12,2) not null default 0,
+  add column if not exists platform_share_xof numeric(12,2) not null default 0,
+  add column if not exists token_multiplier integer not null default 10
+    check (token_multiplier > 0);
+
+update public.plans set
+  ai_budget_xof = case code
+    when 'FREE' then 0
+    when 'PERSONAL' then 1000
+    when 'BUSINESS_STARTER' then 3500
+    when 'BUSINESS' then 6000
+    when 'BUSINESS_PRO' then 10000
+    else ai_budget_xof end,
+  platform_share_xof = case code
+    when 'FREE' then 0
+    when 'PERSONAL' then 500
+    when 'BUSINESS_STARTER' then 4000
+    when 'BUSINESS' then 9000
+    when 'BUSINESS_PRO' then 20000
+    else platform_share_xof end,
+  token_multiplier = 10
+ where code in ('FREE', 'PERSONAL', 'BUSINESS_STARTER', 'BUSINESS', 'BUSINESS_PRO');
+
 -- The free bonus is account-scoped, never workspace/device/session-scoped.
 alter table public.users
   add column if not exists free_ai_bonus_granted_at timestamptz;
