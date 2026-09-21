@@ -9,5 +9,6 @@ import { GeniusPayService } from './geniuspay.service';
   imports: [SupabaseModule],
   controllers: [GeniusPayWebhookController, GeniusPayPaymentController],
   providers: [GeniusPayWebhookService, GeniusPayService],
+  exports: [GeniusPayService],
 })
 export class PaymentsModule {}
