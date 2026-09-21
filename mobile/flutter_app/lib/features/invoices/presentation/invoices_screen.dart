@@ -169,7 +169,7 @@ class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
           ),
           AppSpacing.gapSm,
           DropdownButtonFormField<String>(
-            value: _method,
+            initialValue: _method,
             decoration: const InputDecoration(labelText: 'Mode de paiement'),
             items: const [
               DropdownMenuItem(value: 'CASH', child: Text('Espèces')),
@@ -241,8 +241,9 @@ class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Impossible d’enregistrer le paiement.');
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -287,7 +288,7 @@ class _CreateInvoiceSheetState extends ConsumerState<_CreateInvoiceSheet> {
               Text('Nouvelle facture', style: AppTypography.h2),
               AppSpacing.gapMd,
               DropdownButtonFormField<String>(
-                value: _quoteId,
+                initialValue: _quoteId,
                 decoration: const InputDecoration(
                   labelText: 'Devis à convertir',
                 ),

@@ -36,14 +36,18 @@ class InventoryScreen extends ConsumerWidget {
           },
         ),
         data: (items) {
-          final levels = stock.valueOrNull ?? const <StockSummary>[];
+          final levels = stock.asData?.value ?? const <StockSummary>[];
           final levelByProduct = {
             for (final level in levels) level.productId: level,
           };
           return RefreshIndicator(
             onRefresh: () async {
-              await ref.refresh(productsProvider.future);
-              await ref.refresh(stockProvider.future);
+              ref.invalidate(productsProvider);
+              ref.invalidate(stockProvider);
+              await Future.wait([
+                ref.read(productsProvider.future),
+                ref.read(stockProvider.future),
+              ]);
             },
             child: items.isEmpty
                 ? ListView(
@@ -238,7 +242,7 @@ class _StockMovementSheetState extends ConsumerState<_StockMovementSheet> {
         ),
         AppSpacing.gapSm,
         DropdownButtonFormField<String>(
-          value: _type,
+          initialValue: _type,
           decoration: const InputDecoration(labelText: 'Type'),
           items: const [
             DropdownMenuItem(value: 'PURCHASE', child: Text('Entrée')),
@@ -291,8 +295,9 @@ class _StockMovementSheetState extends ConsumerState<_StockMovementSheet> {
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Impossible d’enregistrer le mouvement.');
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
