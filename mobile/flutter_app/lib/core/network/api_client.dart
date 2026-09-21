@@ -8,8 +8,17 @@ import '../config/app_config.dart';
 /// user's memberships; the client only declares intent.
 const String workspaceHeader = 'X-Workspace-Id';
 
-/// Active workspace id (personal workspace or organization). Set in Mission 03.
-final activeWorkspaceIdProvider = Provider<String?>((_) => null);
+final activeWorkspaceIdProvider =
+    NotifierProvider<ActiveWorkspaceNotifier, String?>(
+      ActiveWorkspaceNotifier.new,
+    );
+
+class ActiveWorkspaceNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void setWorkspace(String? workspaceId) => state = workspaceId;
+}
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(

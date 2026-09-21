@@ -36,6 +36,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AntiAbuseModule } from './anti_abuse/anti_abuse.module';
 import { AuditModule } from './audit/audit.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { AuditModule } from './audit/audit.module';
     SubscriptionsModule,
     AntiAbuseModule,
     AuditModule,
+    WorkspacesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
