@@ -12,6 +12,7 @@ import '../../features/assistant/presentation/assistant_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/quotes/presentation/quotes_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
+import '../../features/inventory/presentation/inventory_screen.dart';
 import '../../shared/widgets/app_states.dart';
 import '../../shared/widgets/placeholder_screen.dart';
 import 'app_routes.dart';
@@ -205,11 +206,9 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
             ),
           ),
           _branch(
-            _placeholder(
-              AppRoutes.businessInventory,
-              'Stock',
-              'Mission 07',
-              Icons.inventory_2_outlined,
+            GoRoute(
+              path: AppRoutes.businessInventory,
+              builder: (_, _) => const InventoryScreen(),
             ),
           ),
           _branch(
