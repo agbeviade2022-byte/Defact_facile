@@ -25,6 +25,7 @@ export const envSchema = z
     ANTHROPIC_API_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     AI_DEFAULT_PROVIDER: z.enum(['anthropic', 'openai']).default('anthropic'),
+    GENIUSPAY_WEBHOOK_SECRET: z.string().optional(),
 
     WHATSAPP_API_KEY: z.string().optional(),
     FNE_API_URL: z.string().url().optional(),

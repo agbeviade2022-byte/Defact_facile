@@ -4,6 +4,7 @@ import { AnthropicProvider } from './anthropic.provider';
 import { AiGatewayService } from './ai-gateway.service';
 import { AiWalletService } from './ai-wallet.service';
 import { OpenAiProvider } from './openai.provider';
+import { AiGatewayController } from './ai-gateway.controller';
 
 /**
  * ai — implemented in a later mission. Kept as an explicit module so the
@@ -11,6 +12,7 @@ import { OpenAiProvider } from './openai.provider';
  */
 @Module({
   imports: [SupabaseModule],
+  controllers: [AiGatewayController],
   providers: [AiWalletService, AnthropicProvider, OpenAiProvider, AiGatewayService],
   exports: [AiWalletService, AnthropicProvider, OpenAiProvider, AiGatewayService],
 })

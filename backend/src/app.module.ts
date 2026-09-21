@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 import { AuthModule } from './auth/auth.module';
+import { SupabaseAuthGuard } from './auth/supabase-auth.guard';
 import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { MembershipsModule } from './memberships/memberships.module';
@@ -82,6 +83,7 @@ import { AuditModule } from './audit/audit.module';
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: SupabaseAuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],
 })

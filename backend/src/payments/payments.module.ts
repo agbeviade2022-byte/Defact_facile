@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
+import { SupabaseModule } from '../supabase/supabase.module';
+import { GeniusPayWebhookController } from './geniuspay-webhook.controller';
+import { GeniusPayWebhookService } from './geniuspay-webhook.service';
 
-/**
- * payments — implemented in a later mission. Kept as an explicit module so the
- * application graph mirrors docs/architecture.md from day one.
- */
-@Module({})
+@Module({
+  imports: [SupabaseModule],
+  controllers: [GeniusPayWebhookController],
+  providers: [GeniusPayWebhookService],
+})
 export class PaymentsModule {}
