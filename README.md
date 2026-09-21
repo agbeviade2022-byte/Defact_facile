@@ -4,7 +4,7 @@
 
 Plateforme SaaS de devis, facturation et gestion commerciale (indépendants, artisans, commerçants, PME) avec IA native.
 Lire d'abord : `docs/cahier-des-charges.md`, puis `docs/architecture.md`.
-
+David est là
 ## Monorepo
 
 | Dossier | Contenu | Stack |
