@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PaymentsModule } from '../payments/payments.module';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { SubscriptionLifecycleController } from './subscription-lifecycle.controller';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
@@ -8,7 +9,7 @@ import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
  * application graph mirrors docs/architecture.md from day one.
  */
 @Module({
-  imports: [SupabaseModule],
+  imports: [PaymentsModule, SupabaseModule],
   controllers: [SubscriptionLifecycleController],
   providers: [SubscriptionLifecycleService],
 })
