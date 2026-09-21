@@ -38,7 +38,7 @@ void main() {
 
     await tester.tap(find.text('Devis'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Mission 05'), findsOneWidget);
+    expect(find.text('Nouveau devis'), findsWidgets);
   });
 
   testWidgets('business shell uses navigation rail on wide screens', (
