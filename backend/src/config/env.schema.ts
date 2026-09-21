@@ -26,6 +26,10 @@ export const envSchema = z
     OPENAI_API_KEY: z.string().optional(),
     AI_DEFAULT_PROVIDER: z.enum(['anthropic', 'openai']).default('anthropic'),
     GENIUSPAY_WEBHOOK_SECRET: z.string().optional(),
+    GENIUSPAY_API_URL: z.string().url().default('https://geniuspay.ci/api/v1/merchant'),
+    GENIUSPAY_API_KEY: z.string().optional(),
+    GENIUSPAY_API_SECRET: z.string().optional(),
+    GENIUSPAY_SANDBOX: z.enum(['true', 'false']).default('true'),
 
     WHATSAPP_API_KEY: z.string().optional(),
     FNE_API_URL: z.string().url().optional(),

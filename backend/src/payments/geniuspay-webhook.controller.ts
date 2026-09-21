@@ -1,7 +1,7 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { BadRequestException, Controller, Headers, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 import { Public } from '../common/decorators/public.decorator';
-import { GeniusPayWebhookDto } from './geniuspay-webhook.dto';
 import { GeniusPayWebhookService } from './geniuspay-webhook.service';
 
 @ApiTags('payments')
@@ -12,9 +12,13 @@ export class GeniusPayWebhookController {
   @Public()
   @Post('webhook')
   handle(
-    @Body() payload: GeniusPayWebhookDto,
-    @Headers('x-geniuspay-signature') signature?: string,
+    @Req() request: Request & { rawBody?: Buffer },
+    @Headers('x-webhook-signature') signature?: string,
+    @Headers('x-webhook-timestamp') timestamp?: string,
+    @Headers('x-webhook-event') event?: string,
   ) {
-    return this.webhook.handle(payload, signature);
+    const rawBody = request.rawBody?.toString('utf8');
+    if (!rawBody) throw new BadRequestException('Raw webhook body is required.');
+    return this.webhook.handle(rawBody, signature, timestamp, event);
   }
 }
