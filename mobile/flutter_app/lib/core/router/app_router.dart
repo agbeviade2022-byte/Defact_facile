@@ -9,6 +9,7 @@ import '../../features/plans/presentation/plans_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/ai_wallet/presentation/ai_wallet_screen.dart';
 import '../../features/assistant/presentation/assistant_screen.dart';
+import '../../features/team/presentation/team_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/quotes/presentation/quotes_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
@@ -136,6 +137,10 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
       GoRoute(
         path: AppRoutes.assistant,
         builder: (_, _) => const AssistantScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.team,
+        builder: (_, _) => const TeamScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => WorkspaceShell(

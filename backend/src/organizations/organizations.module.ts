@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
+import { SupabaseModule } from '../supabase/supabase.module';
+import { OrganizationsController } from './organizations.controller';
+import { OrganizationService } from './organizations.service';
 
-/**
- * organizations — implemented in a later mission. Kept as an explicit module so the
- * application graph mirrors docs/architecture.md from day one.
- */
-@Module({})
+@Module({
+  imports: [SupabaseModule],
+  controllers: [OrganizationsController],
+  providers: [OrganizationService],
+})
 export class OrganizationsModule {}

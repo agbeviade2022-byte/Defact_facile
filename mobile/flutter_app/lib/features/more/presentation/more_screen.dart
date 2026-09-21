@@ -24,6 +24,15 @@ class MoreScreen extends StatelessWidget {
           AppSpacing.gapMd,
           Card(
             child: ListTile(
+              leading: const Icon(Icons.groups_outlined),
+              title: const Text('Équipe'),
+              subtitle: const Text('Voir les membres de l’entreprise'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.team),
+            ),
+          ),
+          Card(
+            child: ListTile(
               leading: const Icon(Icons.workspace_premium_outlined),
               title: const Text('Voir les forfaits'),
               subtitle: const Text('Comparer les offres disponibles'),
