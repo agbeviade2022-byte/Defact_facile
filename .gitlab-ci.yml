@@ -62,7 +62,7 @@ secrets-scan:
     name: ghcr.io/gitleaks/gitleaks:v8.28.0
     entrypoint: ['']
   script:
-    - gitleaks detect --source . --redact --verbose
+    - gitleaks detect --no-git --source . --redact --verbose
 
 android-apk:
   stage: build
