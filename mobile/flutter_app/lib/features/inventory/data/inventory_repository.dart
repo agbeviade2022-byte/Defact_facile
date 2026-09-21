@@ -133,11 +133,7 @@ class InventoryRepository {
     try {
       await _dio.post<void>(
         '/inventory/movements',
-        data: {
-          'productId': productId,
-          'quantity': quantity,
-          'type': type,
-        },
+        data: {'productId': productId, 'quantity': quantity, 'type': type},
       );
     } on DioException catch (error) {
       throw ApiException.fromDio(error);

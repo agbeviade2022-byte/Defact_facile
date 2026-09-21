@@ -14,13 +14,13 @@ class TeamMember {
   });
 
   factory TeamMember.fromJson(Map<String, dynamic> json) => TeamMember(
-        id: json['id'] as String,
-        email: json['email'] as String?,
-        fullName: json['fullName'] as String?,
-        roleId: json['roleId'] as String,
-        roleName: json['roleName'] as String,
-        status: json['status'] as String,
-      );
+    id: json['id'] as String,
+    email: json['email'] as String?,
+    fullName: json['fullName'] as String?,
+    roleId: json['roleId'] as String,
+    roleName: json['roleName'] as String,
+    status: json['status'] as String,
+  );
 
   final String id;
   final String? email;
@@ -30,8 +30,9 @@ class TeamMember {
   final String status;
 }
 
-final teamRepositoryProvider =
-    Provider<TeamRepository>((ref) => TeamRepository(ref.read(dioProvider)));
+final teamRepositoryProvider = Provider<TeamRepository>(
+  (ref) => TeamRepository(ref.read(dioProvider)),
+);
 
 final teamMembersProvider = FutureProvider<List<TeamMember>>(
   (ref) => ref.read(teamRepositoryProvider).listMembers(),

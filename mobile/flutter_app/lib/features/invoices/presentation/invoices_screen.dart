@@ -121,7 +121,8 @@ class _CreatePaymentSheet extends ConsumerStatefulWidget {
   final InvoiceSummary invoice;
 
   @override
-  ConsumerState<_CreatePaymentSheet> createState() => _CreatePaymentSheetState();
+  ConsumerState<_CreatePaymentSheet> createState() =>
+      _CreatePaymentSheetState();
 }
 
 class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
@@ -156,7 +157,9 @@ class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
         children: [
           Text('Enregistrer un paiement', style: AppTypography.h2),
           AppSpacing.gapSm,
-          Text('Reste : ${widget.invoice.amountDue.toStringAsFixed(0)} ${widget.invoice.currency}'),
+          Text(
+            'Reste : ${widget.invoice.amountDue.toStringAsFixed(0)} ${widget.invoice.currency}',
+          ),
           AppSpacing.gapMd,
           TextField(
             controller: _amount,
@@ -170,21 +173,31 @@ class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
             decoration: const InputDecoration(labelText: 'Mode de paiement'),
             items: const [
               DropdownMenuItem(value: 'CASH', child: Text('Espèces')),
-              DropdownMenuItem(value: 'ORANGE_MONEY', child: Text('Orange Money')),
+              DropdownMenuItem(
+                value: 'ORANGE_MONEY',
+                child: Text('Orange Money'),
+              ),
               DropdownMenuItem(value: 'MTN_MOMO', child: Text('MTN MoMo')),
               DropdownMenuItem(value: 'MOOV_MONEY', child: Text('Moov Money')),
               DropdownMenuItem(value: 'WAVE', child: Text('Wave')),
-              DropdownMenuItem(value: 'BANK_TRANSFER', child: Text('Virement bancaire')),
+              DropdownMenuItem(
+                value: 'BANK_TRANSFER',
+                child: Text('Virement bancaire'),
+              ),
               DropdownMenuItem(value: 'CARD', child: Text('Carte')),
               DropdownMenuItem(value: 'OTHER', child: Text('Autre')),
             ],
-            onChanged: _saving ? null : (value) => setState(() => _method = value!),
+            onChanged: _saving
+                ? null
+                : (value) => setState(() => _method = value!),
           ),
           AppSpacing.gapSm,
           TextField(
             controller: _reference,
             enabled: !_saving,
-            decoration: const InputDecoration(labelText: 'Référence (optionnel)'),
+            decoration: const InputDecoration(
+              labelText: 'Référence (optionnel)',
+            ),
           ),
           if (_error != null) ...[
             AppSpacing.gapSm,
@@ -206,7 +219,9 @@ class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
   Future<void> _submit() async {
     final amount = double.tryParse(_amount.text.replaceAll(',', '.'));
     if (amount == null || amount <= 0 || amount > widget.invoice.amountDue) {
-      setState(() => _error = 'Saisis un montant compris entre 0 et le reste dû.');
+      setState(
+        () => _error = 'Saisis un montant compris entre 0 et le reste dû.',
+      );
       return;
     }
     setState(() {
@@ -214,17 +229,20 @@ class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
       _error = null;
     });
     try {
-      await ref.read(paymentsRepositoryProvider).createForInvoice(
-        invoiceId: widget.invoice.id,
-        amount: amount,
-        method: _method,
-        reference: _reference.text,
-      );
+      await ref
+          .read(paymentsRepositoryProvider)
+          .createForInvoice(
+            invoiceId: widget.invoice.id,
+            amount: amount,
+            method: _method,
+            reference: _reference.text,
+          );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Impossible d’enregistrer le paiement.');
+      if (mounted)
+        setState(() => _error = 'Impossible d’enregistrer le paiement.');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -235,7 +253,8 @@ class _CreateInvoiceSheet extends ConsumerStatefulWidget {
   const _CreateInvoiceSheet();
 
   @override
-  ConsumerState<_CreateInvoiceSheet> createState() => _CreateInvoiceSheetState();
+  ConsumerState<_CreateInvoiceSheet> createState() =>
+      _CreateInvoiceSheetState();
 }
 
 class _CreateInvoiceSheetState extends ConsumerState<_CreateInvoiceSheet> {
@@ -258,7 +277,9 @@ class _CreateInvoiceSheetState extends ConsumerState<_CreateInvoiceSheet> {
         child: quotes.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Text(
-            error is ApiException ? error.message : 'Impossible de charger les devis.',
+            error is ApiException
+                ? error.message
+                : 'Impossible de charger les devis.',
           ),
           data: (items) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -267,12 +288,16 @@ class _CreateInvoiceSheetState extends ConsumerState<_CreateInvoiceSheet> {
               AppSpacing.gapMd,
               DropdownButtonFormField<String>(
                 value: _quoteId,
-                decoration: const InputDecoration(labelText: 'Devis à convertir'),
+                decoration: const InputDecoration(
+                  labelText: 'Devis à convertir',
+                ),
                 items: items
                     .map(
                       (quote) => DropdownMenuItem(
                         value: quote.id,
-                        child: Text('${quote.number} · ${quote.total.toStringAsFixed(0)} ${quote.currency}'),
+                        child: Text(
+                          '${quote.number} · ${quote.total.toStringAsFixed(0)} ${quote.currency}',
+                        ),
                       ),
                     )
                     .toList(),

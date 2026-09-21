@@ -27,7 +27,9 @@ class InventoryScreen extends ConsumerWidget {
       body: products.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _InventoryError(
-          message: error is ApiException ? error.message : 'Erreur de chargement.',
+          message: error is ApiException
+              ? error.message
+              : 'Erreur de chargement.',
           onRetry: () {
             ref.invalidate(productsProvider);
             ref.invalidate(stockProvider);
@@ -122,7 +124,8 @@ class _CreateProductSheet extends ConsumerStatefulWidget {
   const _CreateProductSheet();
 
   @override
-  ConsumerState<_CreateProductSheet> createState() => _CreateProductSheetState();
+  ConsumerState<_CreateProductSheet> createState() =>
+      _CreateProductSheetState();
 }
 
 class _CreateProductSheetState extends ConsumerState<_CreateProductSheet> {
@@ -162,7 +165,9 @@ class _CreateProductSheetState extends ConsumerState<_CreateProductSheet> {
           contentPadding: EdgeInsets.zero,
           value: _trackStock,
           title: const Text('Suivre le stock'),
-          onChanged: _saving ? null : (value) => setState(() => _trackStock = value),
+          onChanged: _saving
+              ? null
+              : (value) => setState(() => _trackStock = value),
         ),
         FilledButton(
           onPressed: _saving ? null : _submit,
@@ -184,11 +189,9 @@ class _CreateProductSheetState extends ConsumerState<_CreateProductSheet> {
       _error = null;
     });
     try {
-      await ref.read(inventoryRepositoryProvider).createProduct(
-        name: name,
-        trackStock: _trackStock,
-        salePrice: price,
-      );
+      await ref
+          .read(inventoryRepositoryProvider)
+          .createProduct(name: name, trackStock: _trackStock, salePrice: price);
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -206,7 +209,8 @@ class _StockMovementSheet extends ConsumerStatefulWidget {
   final ProductSummary product;
 
   @override
-  ConsumerState<_StockMovementSheet> createState() => _StockMovementSheetState();
+  ConsumerState<_StockMovementSheet> createState() =>
+      _StockMovementSheetState();
 }
 
 class _StockMovementSheetState extends ConsumerState<_StockMovementSheet> {
@@ -228,14 +232,20 @@ class _StockMovementSheetState extends ConsumerState<_StockMovementSheet> {
       error: _error,
       saving: _saving,
       children: [
-        Text(widget.product.name, style: AppTypography.body.copyWith(fontWeight: FontWeight.w700)),
+        Text(
+          widget.product.name,
+          style: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
+        ),
         AppSpacing.gapSm,
         DropdownButtonFormField<String>(
           value: _type,
           decoration: const InputDecoration(labelText: 'Type'),
           items: const [
             DropdownMenuItem(value: 'PURCHASE', child: Text('Entrée')),
-            DropdownMenuItem(value: 'ADJUSTMENT', child: Text('Ajustement (+/-)')),
+            DropdownMenuItem(
+              value: 'ADJUSTMENT',
+              child: Text('Ajustement (+/-)'),
+            ),
             DropdownMenuItem(value: 'RETURN', child: Text('Retour')),
           ],
           onChanged: _saving ? null : (value) => setState(() => _type = value!),
@@ -244,7 +254,10 @@ class _StockMovementSheetState extends ConsumerState<_StockMovementSheet> {
         TextField(
           controller: _quantity,
           enabled: !_saving,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+          keyboardType: const TextInputType.numberWithOptions(
+            decimal: true,
+            signed: true,
+          ),
           decoration: const InputDecoration(labelText: 'Quantité'),
         ),
         AppSpacing.gapMd,
@@ -267,16 +280,19 @@ class _StockMovementSheetState extends ConsumerState<_StockMovementSheet> {
       _error = null;
     });
     try {
-      await ref.read(inventoryRepositoryProvider).adjustStock(
-        productId: widget.product.id,
-        quantity: quantity,
-        type: _type,
-      );
+      await ref
+          .read(inventoryRepositoryProvider)
+          .adjustStock(
+            productId: widget.product.id,
+            quantity: quantity,
+            type: _type,
+          );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Impossible d’enregistrer le mouvement.');
+      if (mounted)
+        setState(() => _error = 'Impossible d’enregistrer le mouvement.');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -315,7 +331,10 @@ class _SheetFrame extends StatelessWidget {
             ...children,
             if (error != null) ...[
               AppSpacing.gapSm,
-              Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ],
           ],
         ),

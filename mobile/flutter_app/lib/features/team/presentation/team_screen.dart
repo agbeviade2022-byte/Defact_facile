@@ -58,7 +58,9 @@ class TeamScreen extends ConsumerWidget {
                   subtitle: Text(member.email ?? member.status),
                   trailing: Text(
                     member.roleName,
-                    style: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
+                    style: AppTypography.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               );

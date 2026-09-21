@@ -138,10 +138,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
         path: AppRoutes.assistant,
         builder: (_, _) => const AssistantScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.team,
-        builder: (_, _) => const TeamScreen(),
-      ),
+      GoRoute(path: AppRoutes.team, builder: (_, _) => const TeamScreen()),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => WorkspaceShell(
           destinations: _personalDestinations,

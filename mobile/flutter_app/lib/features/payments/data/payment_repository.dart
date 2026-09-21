@@ -26,7 +26,8 @@ class PaymentsRepository {
           'invoiceId': invoiceId,
           'amount': amount,
           'method': method,
-          if (reference?.trim().isNotEmpty == true) 'reference': reference!.trim(),
+          if (reference?.trim().isNotEmpty == true)
+            'reference': reference!.trim(),
           if (notes?.trim().isNotEmpty == true) 'notes': notes!.trim(),
         },
       );
