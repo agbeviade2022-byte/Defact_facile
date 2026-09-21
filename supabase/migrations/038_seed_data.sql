@@ -141,10 +141,23 @@ insert into public.ai_action_costs (action, credits, description) values
   ('full_report', 15, 'Rapport complet')
 on conflict (action) do nothing;
 
--- Plans
-insert into public.plans (code, name, audience, price_monthly, price_yearly, ai_credits_monthly, limits) values
-  ('FREE', 'Gratuit', 'BOTH', 0, 0, 10, '{"invoices_per_month": 10, "members": 1}'),
-  ('SOLO', 'Solo', 'PERSONAL', 5000, 50000, 100, '{"invoices_per_month": null, "members": 1}'),
-  ('BUSINESS', 'Entreprise', 'ORGANIZATION', 15000, 150000, 500, '{"invoices_per_month": null, "members": 10}'),
-  ('BUSINESS_PLUS', 'Entreprise+', 'ORGANIZATION', 35000, 350000, 2000, '{"invoices_per_month": null, "members": null}')
-on conflict (code) do nothing;
+-- Official plans. Prices are XOF/month; AI quotas are user-visible tokens.
+insert into public.plans (code, name, audience, price_monthly, price_yearly, ai_credits_monthly, limits, features) values
+  ('FREE', 'Gratuit', 'BOTH', 0, 0, 500, '{"invoices_per_month": 10, "members": 1}', '{"free_bonus_once": true}'),
+  ('PERSONAL', 'Personnel', 'PERSONAL', 1500, 18000, 10000, '{"invoices_per_month": null, "members": 1}', '{}'),
+  ('BUSINESS_STARTER', 'Business Starter', 'ORGANIZATION', 7500, 90000, 35000, '{"invoices_per_month": null, "members": 5}', '{}'),
+  ('BUSINESS', 'Business', 'ORGANIZATION', 15000, 180000, 60000, '{"invoices_per_month": null, "members": 10}', '{}'),
+  ('BUSINESS_PRO', 'Business Pro', 'ORGANIZATION', 30000, 360000, 100000, '{"invoices_per_month": null, "members": null}', '{}')
+on conflict (code) do update set
+  name = excluded.name,
+  audience = excluded.audience,
+  price_monthly = excluded.price_monthly,
+  price_yearly = excluded.price_yearly,
+  ai_credits_monthly = excluded.ai_credits_monthly,
+  limits = excluded.limits,
+  features = excluded.features,
+  is_active = true,
+  updated_at = now();
+
+update public.plans set is_active = false
+ where code not in ('FREE', 'PERSONAL', 'BUSINESS_STARTER', 'BUSINESS', 'BUSINESS_PRO');
