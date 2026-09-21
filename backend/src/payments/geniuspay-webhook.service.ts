@@ -82,16 +82,15 @@ export class GeniusPayWebhookService {
         const start = new Date();
         const end = new Date(start);
         end.setMonth(end.getMonth() + (subscription?.billing_cycle === 'YEARLY' ? 12 : 1));
-        await this.supabase.admin
-          .from('subscriptions')
-          .update({
-            status: 'ACTIVE',
-            payment_reference: reference,
-            current_period_start: start.toISOString(),
-            current_period_end: end.toISOString(),
-          })
-          .eq('id', subscriptionId)
-          .eq('status', 'TRIALING');
+        const { error: activationError } = await this.supabase.admin.rpc('activate_subscription', {
+          p_subscription_id: subscriptionId,
+          p_payment_reference: reference,
+          p_period_start: start.toISOString(),
+          p_period_end: end.toISOString(),
+        });
+        if (activationError) {
+          throw new BadRequestException('Activation de l’abonnement impossible.');
+        }
       }
     }
     return { received: true, payment };
