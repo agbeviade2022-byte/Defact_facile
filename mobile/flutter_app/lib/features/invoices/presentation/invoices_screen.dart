@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../payments/data/payment_repository.dart';
 import '../../quotes/data/quote_repository.dart';
 import '../data/invoice_repository.dart';
 
@@ -50,7 +51,10 @@ class InvoicesScreen extends ConsumerWidget {
                   padding: AppSpacing.screen,
                   itemCount: items.length,
                   separatorBuilder: (_, _) => AppSpacing.gapSm,
-                  itemBuilder: (_, index) => _InvoiceTile(invoice: items[index]),
+                  itemBuilder: (_, index) => _InvoiceTile(
+                    invoice: items[index],
+                    onTap: () => _openPayment(context, ref, items[index]),
+                  ),
                 ),
         ),
       ),
@@ -70,26 +74,160 @@ class InvoicesScreen extends ConsumerWidget {
     );
     if (created == true) ref.invalidate(invoicesProvider);
   }
+
+  Future<void> _openPayment(
+    BuildContext context,
+    WidgetRef ref,
+    InvoiceSummary invoice,
+  ) async {
+    final paid = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _CreatePaymentSheet(invoice: invoice),
+    );
+    if (paid == true) ref.invalidate(invoicesProvider);
+  }
 }
 
 class _InvoiceTile extends StatelessWidget {
-  const _InvoiceTile({required this.invoice});
+  const _InvoiceTile({required this.invoice, required this.onTap});
 
   final InvoiceSummary invoice;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
+        onTap: invoice.amountDue > 0 ? onTap : null,
         leading: const CircleAvatar(child: Icon(Icons.receipt_long_outlined)),
         title: Text(invoice.number),
-        subtitle: Text('${invoice.status} · ${invoice.issueDate}'),
+        subtitle: Text(
+          '${invoice.status} · ${invoice.issueDate}'
+          '${invoice.amountDue > 0 ? ' · Reste ${invoice.amountDue.toStringAsFixed(0)} ${invoice.currency}' : ''}',
+        ),
         trailing: Text(
           '${invoice.total.toStringAsFixed(0)} ${invoice.currency}',
           style: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );
+  }
+}
+
+class _CreatePaymentSheet extends ConsumerStatefulWidget {
+  const _CreatePaymentSheet({required this.invoice});
+
+  final InvoiceSummary invoice;
+
+  @override
+  ConsumerState<_CreatePaymentSheet> createState() => _CreatePaymentSheetState();
+}
+
+class _CreatePaymentSheetState extends ConsumerState<_CreatePaymentSheet> {
+  late final TextEditingController _amount = TextEditingController(
+    text: widget.invoice.amountDue.toStringAsFixed(0),
+  );
+  final _reference = TextEditingController();
+  String _method = 'CASH';
+  String? _error;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _reference.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.screen.left,
+        AppSpacing.screen.top,
+        AppSpacing.screen.right,
+        AppSpacing.screen.bottom + bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Enregistrer un paiement', style: AppTypography.h2),
+          AppSpacing.gapSm,
+          Text('Reste : ${widget.invoice.amountDue.toStringAsFixed(0)} ${widget.invoice.currency}'),
+          AppSpacing.gapMd,
+          TextField(
+            controller: _amount,
+            enabled: !_saving,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Montant'),
+          ),
+          AppSpacing.gapSm,
+          DropdownButtonFormField<String>(
+            value: _method,
+            decoration: const InputDecoration(labelText: 'Mode de paiement'),
+            items: const [
+              DropdownMenuItem(value: 'CASH', child: Text('Espèces')),
+              DropdownMenuItem(value: 'ORANGE_MONEY', child: Text('Orange Money')),
+              DropdownMenuItem(value: 'MTN_MOMO', child: Text('MTN MoMo')),
+              DropdownMenuItem(value: 'MOOV_MONEY', child: Text('Moov Money')),
+              DropdownMenuItem(value: 'WAVE', child: Text('Wave')),
+              DropdownMenuItem(value: 'BANK_TRANSFER', child: Text('Virement bancaire')),
+              DropdownMenuItem(value: 'CARD', child: Text('Carte')),
+              DropdownMenuItem(value: 'OTHER', child: Text('Autre')),
+            ],
+            onChanged: _saving ? null : (value) => setState(() => _method = value!),
+          ),
+          AppSpacing.gapSm,
+          TextField(
+            controller: _reference,
+            enabled: !_saving,
+            decoration: const InputDecoration(labelText: 'Référence (optionnel)'),
+          ),
+          if (_error != null) ...[
+            AppSpacing.gapSm,
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          AppSpacing.gapMd,
+          FilledButton(
+            onPressed: _saving ? null : _submit,
+            child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final amount = double.tryParse(_amount.text.replaceAll(',', '.'));
+    if (amount == null || amount <= 0 || amount > widget.invoice.amountDue) {
+      setState(() => _error = 'Saisis un montant compris entre 0 et le reste dû.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref.read(paymentsRepositoryProvider).createForInvoice(
+        invoiceId: widget.invoice.id,
+        amount: amount,
+        method: _method,
+        reference: _reference.text,
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Impossible d’enregistrer le paiement.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 
