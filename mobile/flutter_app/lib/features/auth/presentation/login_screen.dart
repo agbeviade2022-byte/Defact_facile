@@ -73,7 +73,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
     try {
-      await auth.signInWithGoogle();
+      final signedIn = await auth.signInWithGoogle();
+      if (signedIn && mounted) context.go(AppRoutes.workspaces);
     } on AuthException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -160,7 +161,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   AppSpacing.gapMd,
                   OutlinedButton.icon(
-                    onPressed: _loading || !auth.isConfigured ? null : _google,
+                    onPressed: _loading || AppConfig.googleWebClientId.isEmpty
+                        ? null
+                        : _google,
                     icon: const Icon(Icons.g_mobiledata, size: 28),
                     label: const Text('Continuer avec Google'),
                   ),

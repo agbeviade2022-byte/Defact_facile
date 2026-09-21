@@ -3,12 +3,14 @@ import { Reflector } from '@nestjs/core';
 import { SupabaseService } from '../supabase/supabase.service';
 import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
 import { RequestContext } from '../common/types/request-context';
+import { AppTokenService } from './app-token.service';
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly supabase: SupabaseService,
+    private readonly appTokens: AppTokenService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -27,14 +29,24 @@ export class SupabaseAuthGuard implements CanActivate {
     const accessToken = authorization.slice('Bearer '.length).trim();
     if (!accessToken) throw new UnauthorizedException('Jeton manquant.');
 
-    const { data, error } = await this.supabase.admin.auth.getUser(accessToken);
-    if (error || !data.user) throw new UnauthorizedException('Jeton invalide.');
+    try {
+      const claims = this.appTokens.verify(accessToken);
+      request.user = {
+        id: claims.sub,
+        email: claims.email,
+        accessToken,
+      };
+      return true;
+    } catch {
+      const { data, error } = await this.supabase.admin.auth.getUser(accessToken);
+      if (error || !data.user) throw new UnauthorizedException('Jeton invalide.');
 
-    request.user = {
-      id: data.user.id,
-      email: data.user.email ?? null,
-      accessToken,
-    };
+      request.user = {
+        id: data.user.id,
+        email: data.user.email ?? null,
+        accessToken,
+      };
+    }
     return true;
   }
 }

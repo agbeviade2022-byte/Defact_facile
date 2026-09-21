@@ -18,6 +18,8 @@ export const envSchema = z
     SUPABASE_ANON_KEY: z.string().min(1),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     SUPABASE_JWT_SECRET: z.string().min(16),
+    AUTH_JWT_SECRET: z.string().min(32).optional(),
+    GOOGLE_WEB_CLIENT_ID: z.string().optional(),
 
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().default('DEFACT FACILE <no-reply@defactfacile.com>'),

@@ -1,7 +1,7 @@
 import { Request } from 'express';
 import { Permission } from '../constants/permissions';
 
-/** Identity resolved from the Supabase JWT (Mission 02). */
+/** Identity resolved from a Supabase or DEFACT access token. */
 export interface AuthenticatedUser {
   id: string;
   email: string | null;

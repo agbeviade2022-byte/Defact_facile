@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,12 +30,31 @@ final accessTokenProvider = NotifierProvider<AccessTokenNotifier, String?>(
 );
 
 class AccessTokenNotifier extends Notifier<String?> {
-  @override
-  String? build() => supabaseInitialized
-      ? Supabase.instance.client.auth.currentSession?.accessToken
-      : null;
+  static const _storageKey = 'defact_access_token';
+  final _storage = const FlutterSecureStorage();
 
-  void setToken(String? token) => state = token;
+  @override
+  String? build() {
+    final supabaseToken = supabaseInitialized
+        ? Supabase.instance.client.auth.currentSession?.accessToken
+        : null;
+    unawaited(restore());
+    return supabaseToken;
+  }
+
+  void setToken(String? token) {
+    state = token;
+    unawaited(
+      token == null
+          ? _storage.delete(key: _storageKey)
+          : _storage.write(key: _storageKey, value: token),
+    );
+  }
+
+  Future<void> restore() async {
+    final token = await _storage.read(key: _storageKey);
+    if (token != null && token.isNotEmpty && state == null) state = token;
+  }
 }
 
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -82,14 +102,6 @@ class AuthService {
   }
 
   Future<bool> signInWithGoogle() async {
-    _requireClient();
-    if (kIsWeb) {
-      return _client!.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: Uri.base.origin,
-      );
-    }
-
     if (AppConfig.googleWebClientId.isEmpty) {
       throw AuthException('Google Auth n’est pas configuré.');
     }
@@ -97,36 +109,33 @@ class AuthService {
     final googleSignIn = GoogleSignIn.instance;
     if (!_googleInitialized) {
       await googleSignIn.initialize(
+        clientId: AppConfig.googleWebClientId,
         serverClientId: AppConfig.googleWebClientId,
       );
       _googleInitialized = true;
     }
 
     final googleUser = await googleSignIn.authenticate();
-    final authorization =
-        await googleUser.authorizationClient.authorizationForScopes(
-          const ['email', 'profile'],
-        ) ??
-        await googleUser.authorizationClient.authorizeScopes(
-          const ['email', 'profile'],
-        );
     final idToken = googleUser.authentication.idToken;
     if (idToken == null) {
       throw AuthException('Google n’a pas fourni de jeton d’identité.');
     }
 
-    final response = await _client!.auth.signInWithIdToken(
-      provider: OAuthProvider.google,
-      idToken: idToken,
-      accessToken: authorization.accessToken,
+    final response = await Dio().post<Map<String, dynamic>>(
+      '${AppConfig.apiBaseUrl}/auth/google',
+      data: {'idToken': idToken},
     );
-    _setAccessToken(response.session?.accessToken);
-    return response.session != null;
+    final accessToken = response.data?['accessToken'];
+    if (accessToken is! String || accessToken.isEmpty) {
+      throw AuthException('Le serveur n’a pas fourni de session Google.');
+    }
+    _setAccessToken(accessToken);
+    return true;
   }
 
   Future<void> signOut() async {
-    _requireClient();
-    await _client!.auth.signOut();
+    await GoogleSignIn.instance.signOut();
+    await _client?.auth.signOut();
     _setAccessToken(null);
   }
 
