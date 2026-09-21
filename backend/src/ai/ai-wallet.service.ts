@@ -37,8 +37,16 @@ export class AiWalletService {
     return data as string;
   }
 
-  async complete(reservationId: string): Promise<void> {
-    const { error } = await this.supabase.admin.rpc('complete_ai_reservation', {
+  async complete(reservationId: string): Promise<boolean> {
+    const { data, error } = await this.supabase.admin.rpc('complete_ai_reservation', {
+      p_reservation_id: reservationId,
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+    return data as boolean;
+  }
+
+  async expire(reservationId: string): Promise<void> {
+    const { error } = await this.supabase.admin.rpc('expire_ai_reservation', {
       p_reservation_id: reservationId,
     });
     if (error) throw new InternalServerErrorException(error.message);

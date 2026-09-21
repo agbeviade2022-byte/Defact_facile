@@ -1152,6 +1152,10 @@ create table public.ai_wallet_transactions (
 create index ai_wallet_transactions_user_created_idx
   on public.ai_wallet_transactions(user_id, created_at desc);
 
+create trigger forbid_ai_wallet_transaction_mutation
+  before update or delete on public.ai_wallet_transactions
+  for each row execute function public.forbid_mutation();
+
 create table public.ai_reservations (
   id uuid primary key default gen_random_uuid(),
   wallet_id uuid not null references public.ai_wallets(id) on delete restrict,
@@ -1236,6 +1240,10 @@ as $$
 declare
   v_wallet_id uuid;
 begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'AI wallet operations require the backend';
+  end if;
+
   update public.users
      set free_ai_bonus_granted_at = coalesce(free_ai_bonus_granted_at, now())
    where id = p_user_id and free_ai_bonus_granted_at is null;
@@ -1278,19 +1286,37 @@ as $$
 declare
   v_wallet_id uuid;
   v_reservation_id uuid;
+  v_existing_user_id uuid;
+  v_existing_amount integer;
+  v_existing_action text;
+  v_existing_provider text;
 begin
-  if p_amount <= 0 then raise exception 'AI reservation amount must be positive'; end if;
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'AI wallet operations require the backend';
+  end if;
 
-  select id into v_reservation_id
-    from public.ai_reservations
-   where idempotency_key = p_idempotency_key;
-  if v_reservation_id is not null then return v_reservation_id; end if;
+  if p_amount <= 0 then raise exception 'AI reservation amount must be positive'; end if;
 
   select id into v_wallet_id
     from public.ai_wallets
    where user_id = p_user_id
    for update;
   if v_wallet_id is null then raise exception 'AI wallet not found'; end if;
+
+  select id, user_id, amount, action, provider
+    into v_reservation_id, v_existing_user_id, v_existing_amount,
+         v_existing_action, v_existing_provider
+    from public.ai_reservations
+   where idempotency_key = p_idempotency_key;
+  if v_reservation_id is not null then
+    if v_existing_user_id <> p_user_id
+       or v_existing_amount <> p_amount
+       or v_existing_action <> p_action
+       or v_existing_provider <> p_provider then
+      raise exception 'AI reservation idempotency key reuse conflict';
+    end if;
+    return v_reservation_id;
+  end if;
 
   update public.ai_wallets
      set balance = balance - p_amount
@@ -1313,7 +1339,7 @@ end;
 $$;
 
 create or replace function public.complete_ai_reservation(p_reservation_id uuid)
-returns void
+returns boolean
 language plpgsql
 security definer
 set search_path = public
@@ -1323,9 +1349,15 @@ declare
   v_user_id uuid;
   v_amount integer;
 begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'AI wallet operations require the backend';
+  end if;
+
   update public.ai_reservations
      set status = 'COMMITTED', completed_at = now()
-   where id = p_reservation_id and status = 'RESERVED'
+   where id = p_reservation_id
+     and status = 'RESERVED'
+     and expires_at > now()
    returning wallet_id, user_id, amount into v_wallet_id, v_user_id, v_amount;
   if found then
     update public.ai_wallets
@@ -1336,7 +1368,9 @@ begin
     values
       (v_wallet_id, v_user_id, 'CONSUMPTION', 0, 'consumption:' || p_reservation_id)
     on conflict (idempotency_key) do nothing;
+    return true;
   end if;
+  return false;
 end;
 $$;
 
@@ -1351,6 +1385,10 @@ declare
   v_user_id uuid;
   v_amount integer;
 begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'AI wallet operations require the backend';
+  end if;
+
   update public.ai_reservations
      set status = 'REFUNDED', completed_at = now()
    where id = p_reservation_id and status = 'RESERVED'
@@ -1365,6 +1403,68 @@ begin
       (v_wallet_id, v_user_id, 'REFUND', v_amount, 'refund:' || p_reservation_id)
     on conflict (idempotency_key) do nothing;
   end if;
+end;
+$$;
+
+create or replace function public.expire_ai_reservation(p_reservation_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_wallet_id uuid;
+  v_user_id uuid;
+  v_amount integer;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'AI wallet operations require the backend';
+  end if;
+
+  update public.ai_reservations
+     set status = 'EXPIRED', completed_at = now()
+   where id = p_reservation_id
+     and status = 'RESERVED'
+     and expires_at <= now()
+   returning wallet_id, user_id, amount into v_wallet_id, v_user_id, v_amount;
+
+  if found then
+    update public.ai_wallets
+       set balance = balance + v_amount
+     where id = v_wallet_id;
+    insert into public.ai_wallet_transactions
+      (wallet_id, user_id, kind, amount, idempotency_key)
+    values
+      (v_wallet_id, v_user_id, 'EXPIRATION', v_amount, 'expiration:' || p_reservation_id)
+    on conflict (idempotency_key) do nothing;
+  end if;
+end;
+$$;
+
+create or replace function public.expire_ai_reservations()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reservation_id uuid;
+  v_count integer := 0;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'AI wallet operations require the backend';
+  end if;
+
+  for v_reservation_id in
+    select id
+      from public.ai_reservations
+     where status = 'RESERVED' and expires_at <= now()
+     for update skip locked
+  loop
+    perform public.expire_ai_reservation(v_reservation_id);
+    v_count := v_count + 1;
+  end loop;
+  return v_count;
 end;
 $$;
 """

@@ -8,7 +8,9 @@ export const envSchema = z
     NODE_ENV: z.enum(APP_ENVIRONMENTS).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
     API_PREFIX: z.string().default('api/v1'),
-    CORS_ORIGINS: z.string().default('*'),
+    CORS_ORIGINS: z
+      .string()
+      .default('http://localhost:3000,http://localhost:5000,http://localhost:8080'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'log', 'debug', 'verbose']).default('log'),
 
     DATABASE_URL: z.string().url(),
@@ -48,6 +50,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   const cleaned = Object.fromEntries(
     Object.entries(raw).filter(([, v]) => !(typeof v === 'string' && v.trim() === '')),
   );
+  if (cleaned.NODE_ENV === 'production' && !cleaned.CORS_ORIGINS) {
+    throw new Error(
+      'Invalid environment configuration:\n  - CORS_ORIGINS: must be explicitly configured in production',
+    );
+  }
   const result = envSchema.safeParse(cleaned);
   if (!result.success) {
     const issues = result.error.issues

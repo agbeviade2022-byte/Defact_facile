@@ -48,7 +48,11 @@ export class AiGatewayService {
 
       try {
         const result = await provider.complete(request);
-        await this.wallet.complete(reservationId);
+        const committed = await this.wallet.complete(reservationId);
+        if (!committed) {
+          await this.wallet.expire(reservationId);
+          throw new ServiceUnavailableException('La réservation IA a expiré.');
+        }
         await this.wallet.recordUsage(request.userId, reservationId, result);
         return result;
       } catch (error: unknown) {
