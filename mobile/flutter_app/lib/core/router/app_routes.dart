@@ -5,6 +5,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String onboarding = '/onboarding';
   static const String workspaces = '/workspaces';
+  static const String plans = '/plans';
 
   // Personal workspace: Accueil / Devis / Factures / Clients / Plus
   static const String personalHome = '/p/home';

@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/workspaces/presentation/workspace_selector_screen.dart';
+import '../../features/plans/presentation/plans_screen.dart';
+import '../../features/more/presentation/more_screen.dart';
 import '../../shared/widgets/app_states.dart';
 import '../../shared/widgets/placeholder_screen.dart';
 import 'app_routes.dart';
@@ -120,6 +122,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
         path: AppRoutes.workspaces,
         builder: (_, _) => const WorkspaceSelectorScreen(),
       ),
+      GoRoute(path: AppRoutes.plans, builder: (_, _) => const PlansScreen()),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => WorkspaceShell(
           destinations: _personalDestinations,
@@ -159,11 +162,9 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
             ),
           ),
           _branch(
-            _placeholder(
-              AppRoutes.personalMore,
-              'Plus',
-              'Mission 03',
-              Icons.more_horiz,
+            GoRoute(
+              path: AppRoutes.personalMore,
+              builder: (_, _) => const MoreScreen(),
             ),
           ),
         ],
@@ -215,11 +216,9 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
             ),
           ),
           _branch(
-            _placeholder(
-              AppRoutes.businessMore,
-              'Plus',
-              'Mission 03',
-              Icons.more_horiz,
+            GoRoute(
+              path: AppRoutes.businessMore,
+              builder: (_, _) => const MoreScreen(),
             ),
           ),
         ],
