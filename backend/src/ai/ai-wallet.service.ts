@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { AiCompletionResult } from './ai-provider';
 
 @Injectable()
 export class AiWalletService {
@@ -46,6 +47,35 @@ export class AiWalletService {
   async refund(reservationId: string): Promise<void> {
     const { error } = await this.supabase.admin.rpc('refund_ai_reservation', {
       p_reservation_id: reservationId,
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+  }
+
+  async recordUsage(
+    userId: string,
+    reservationId: string,
+    result: AiCompletionResult,
+  ): Promise<void> {
+    const { error } = await this.supabase.admin.from('ai_provider_usage').insert({
+      user_id: userId,
+      reservation_id: reservationId,
+      provider: result.provider,
+      model: result.model,
+      input_tokens: result.inputTokens,
+      output_tokens: result.outputTokens,
+      cost_xof: result.costXof,
+      succeeded: true,
+    });
+    if (error) throw new InternalServerErrorException(error.message);
+  }
+
+  async recordFailure(userId: string, reservationId: string, provider: string): Promise<void> {
+    const { error } = await this.supabase.admin.from('ai_provider_usage').insert({
+      user_id: userId,
+      reservation_id: reservationId,
+      provider,
+      model: 'unknown',
+      succeeded: false,
     });
     if (error) throw new InternalServerErrorException(error.message);
   }
