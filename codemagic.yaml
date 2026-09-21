@@ -1,0 +1,21 @@
+workflows:
+  android-debug-apk:
+    name: Android debug APK
+    instance_type: linux_x2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Install Flutter dependencies
+        script: |
+          cd mobile/flutter_app
+          flutter pub get
+      - name: Build Android APK
+        script: |
+          cd mobile/flutter_app
+          flutter build apk --debug \
+            --dart-define-from-file=env/staging.json \
+            --build-name=0.1.0 \
+            --build-number=$BUILD_NUMBER
+    artifacts:
+      - mobile/flutter_app/build/app/outputs/flutter-apk/app-debug.apk
