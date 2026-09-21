@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
+import { SupabaseModule } from '../supabase/supabase.module';
+import { InvoicesController } from './invoices.controller';
+import { InvoicesService } from './invoices.service';
 
-/**
- * invoices — implemented in a later mission. Kept as an explicit module so the
- * application graph mirrors docs/architecture.md from day one.
- */
-@Module({})
+@Module({
+  imports: [SupabaseModule],
+  controllers: [InvoicesController],
+  providers: [InvoicesService],
+})
 export class InvoicesModule {}

@@ -11,6 +11,7 @@ import '../../features/ai_wallet/presentation/ai_wallet_screen.dart';
 import '../../features/assistant/presentation/assistant_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/quotes/presentation/quotes_screen.dart';
+import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../shared/widgets/app_states.dart';
 import '../../shared/widgets/placeholder_screen.dart';
 import 'app_routes.dart';
@@ -156,11 +157,9 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
             ),
           ),
           _branch(
-            _placeholder(
-              AppRoutes.personalInvoices,
-              'Factures',
-              'Mission 05',
-              Icons.receipt_long_outlined,
+            GoRoute(
+              path: AppRoutes.personalInvoices,
+              builder: (_, _) => const InvoicesScreen(),
             ),
           ),
           _branch(
@@ -200,11 +199,9 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
             ),
           ),
           _branch(
-            _placeholder(
-              AppRoutes.businessInvoices,
-              'Factures',
-              'Mission 05',
-              Icons.receipt_long_outlined,
+            GoRoute(
+              path: AppRoutes.businessInvoices,
+              builder: (_, _) => const InvoicesScreen(),
             ),
           ),
           _branch(
