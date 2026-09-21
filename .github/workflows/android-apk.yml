@@ -1,0 +1,52 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build APK (staging config, debug-signed)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/flutter_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build APK
+        run: >-
+          flutter build apk --release
+          --dart-define-from-file=env/staging.json
+          --build-name=0.1.0
+          --build-number=${{ github.run_number }}
+      - name: Rename artifact
+        run: cp build/app/outputs/flutter-apk/app-release.apk
+          build/app/outputs/flutter-apk/defact-facile-${{ github.run_number }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: defact-facile-apk-${{ github.run_number }}
+          path: mobile/flutter_app/build/app/outputs/flutter-apk/defact-facile-*.apk
+          retention-days: 30
+      - name: Publish pre-release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-build-${{ github.run_number }}
+          name: APK build ${{ github.run_number }}
+          prerelease: true
+          files: mobile/flutter_app/build/app/outputs/flutter-apk/defact-facile-*.apk

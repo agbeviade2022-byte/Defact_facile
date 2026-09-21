@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AppConfigModule } from './config/config.module';
+import { AppConfigService } from './config/app-config.service';
+import { SupabaseModule } from './supabase/supabase.module';
+import { HealthModule } from './health/health.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
-// Import all feature modules
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
@@ -16,8 +17,8 @@ import { CustomersModule } from './customers/customers.module';
 import { ProductsModule } from './products/products.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { InvoicesModule } from './invoices/invoices.module';
-import { PaymentsModule } from './payments/payments.module';
 import { SalesModule } from './sales/sales.module';
+import { PaymentsModule } from './payments/payments.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
@@ -27,49 +28,29 @@ import { ReportsModule } from './reports/reports.module';
 import { StoresModule } from './stores/stores.module';
 import { CashRegisterModule } from './cash_register/cash_register.module';
 import { AiModule } from './ai/ai.module';
-import { WhatsAppModule } from './whatsapp/whatsapp.module';
-import { FNEModule } from './fne/fne.module';
-import { PDFModule } from './pdf/pdf.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { FneModule } from './fne/fne.module';
+import { PdfModule } from './pdf/pdf.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AntiAbuseModule } from './anti_abuse/anti_abuse.module';
 import { AuditModule } from './audit/audit.module';
-import { GeniusPayModule } from './geniuspay/geniuspay.module';
 
 @Module({
   imports: [
-    // Load environment variables
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: ['.env.development', '.env'],
+    AppConfigModule,
+    SupabaseModule,
+    ThrottlerModule.forRootAsync({
+      inject: [AppConfigService],
+      useFactory: (config: AppConfigService) => [
+        {
+          ttl: config.get('RATE_LIMIT_TTL_SECONDS') * 1000,
+          limit: config.get('RATE_LIMIT_MAX'),
+        },
+      ],
     }),
+    HealthModule,
 
-    // Database connection (will be configured with Supabase)
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: () => ({
-        type: 'postgres',
-        host: process.env.DB_HOST,
-        port: parseInt(process.env.DB_PORT) || 5432,
-        username: process.env.DB_USERNAME,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_DATABASE,
-        schema: process.env.DB_SCHEMA || 'public',
-        ssl: process.env.DB_SSL === 'true',
-        autoLoadEntities: true,
-        synchronize: process.env.DB_SYNCHRONIZE === 'true', // Only in development
-      }),
-    }),
-
-    // Rate limiting
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60,
-        limit: 10,
-      },
-    ]),
-
-    // Feature modules
     AuthModule,
     UsersModule,
     OrganizationsModule,
@@ -80,8 +61,8 @@ import { GeniusPayModule } from './geniuspay/geniuspay.module';
     ProductsModule,
     QuotesModule,
     InvoicesModule,
-    PaymentsModule,
     SalesModule,
+    PaymentsModule,
     InventoryModule,
     ExpensesModule,
     SuppliersModule,
@@ -91,16 +72,17 @@ import { GeniusPayModule } from './geniuspay/geniuspay.module';
     StoresModule,
     CashRegisterModule,
     AiModule,
-    WhatsAppModule,
-    FNEModule,
-    PDFModule,
+    WhatsappModule,
+    FneModule,
+    PdfModule,
     NotificationsModule,
     SubscriptionsModule,
     AntiAbuseModule,
     AuditModule,
-    GeniusPayModule,
   ],
-  controllers: [],
-  providers: [],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+  ],
 })
 export class AppModule {}
