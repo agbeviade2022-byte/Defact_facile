@@ -83,7 +83,9 @@ class AuthService {
     _requireClient();
     return _client!.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: kIsWeb ? Uri.base.origin : null,
+      redirectTo: kIsWeb
+          ? Uri.base.origin
+          : 'io.supabase.flutter://login-callback/',
     );
   }
 
