@@ -1,0 +1,79 @@
+stages:
+  - validate
+  - build
+
+backend:
+  stage: validate
+  image: node:20
+  cache:
+    key:
+      files:
+        - backend/package-lock.json
+    paths:
+      - backend/.npm/
+  script:
+    - cd backend
+    - npm ci --cache .npm --prefer-offline
+    - npm run format:check
+    - npm run lint
+    - npm run typecheck
+    - npm test -- --ci
+    - npm run test:e2e -- --ci
+    - npm run build
+
+mobile:
+  stage: validate
+  image: ghcr.io/cirruslabs/flutter:stable
+  script:
+    - cd mobile/flutter_app
+    - flutter pub get
+    - dart format --output=none --set-exit-if-changed lib test
+    - flutter analyze --fatal-infos
+    - flutter test
+    - flutter build web --release --dart-define-from-file=env/development.json
+
+database:
+  stage: validate
+  image: postgres:15-alpine
+  services:
+    - name: postgres:15-alpine
+      alias: postgres
+  variables:
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: defact_test
+    DATABASE_URL: postgres://postgres:postgres@postgres:5432/defact_test
+    PGPASSWORD: postgres
+  before_script:
+    - apk add --no-cache bash postgresql-client
+  script:
+    - supabase/scripts/validate_migrations.sh
+    - |
+      missing=$(psql -h postgres -U postgres -d defact_test -At -c \
+        "select tablename from pg_tables where schemaname='public' and not rowsecurity;")
+      if [ -n "$missing" ]; then
+        echo "Tables without RLS: $missing"
+        exit 1
+      fi
+
+secrets-scan:
+  stage: validate
+  image:
+    name: zricetoman/gitleaks:latest
+    entrypoint: ['']
+  script:
+    - gitleaks detect --source . --redact --verbose
+
+android-apk:
+  stage: build
+  image: ghcr.io/cirruslabs/flutter:stable
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - cd mobile/flutter_app
+    - flutter pub get
+    - flutter build apk --release --dart-define-from-file=env/staging.json --build-name=0.1.0 --build-number=$CI_PIPELINE_IID
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - mobile/flutter_app/build/app/outputs/flutter-apk/app-release.apk
