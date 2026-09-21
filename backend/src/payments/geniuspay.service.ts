@@ -46,6 +46,7 @@ export class GeniusPayService {
       provider_reference: internalReference,
       status: 'PENDING',
       kind: body.kind,
+      metadata: { tokens },
     });
     if (pendingError) throw new BadRequestException('Paiement local impossible à enregistrer.');
 

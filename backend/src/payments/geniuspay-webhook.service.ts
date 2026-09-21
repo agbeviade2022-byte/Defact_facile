@@ -28,6 +28,7 @@ export class GeniusPayWebhookService {
 
     const eventName = event ?? this.readString(payload, 'event');
     const status = this.statusForEvent(eventName);
+    const isRefund = eventName === 'payment.refunded';
     const { data: existing, error: lookupError } = await this.supabase.admin
       .from('billing_payments')
       .select('id, status, provider_reference, amount, user_id, kind, subscription_id, metadata')
@@ -37,6 +38,19 @@ export class GeniusPayWebhookService {
     if (lookupError) throw new BadRequestException('Paiement GeniusPay introuvable.');
     if (!existing) throw new BadRequestException('Paiement GeniusPay non initié.');
     if (existing && existing.status !== 'PENDING') {
+      if (existing.status === 'SUCCEEDED' && isRefund) {
+        if (existing.kind === 'AI_TOP_UP') {
+          await this.reverseTopUp(userId, reference);
+        }
+        const { data: payment, error } = await this.supabase.admin
+          .from('billing_payments')
+          .update({ status: 'CANCELLED' })
+          .eq('id', existing.id)
+          .select('id, status, provider_reference')
+          .single();
+        if (error) throw new BadRequestException('Remboursement GeniusPay invalide.');
+        return { received: true, payment };
+      }
       if (existing.status !== status) {
         throw new BadRequestException('Transition de paiement GeniusPay contradictoire.');
       }
@@ -167,6 +181,15 @@ export class GeniusPayWebhookService {
       p_idempotency_key: `topup:${reference}`,
     });
     if (error) throw new BadRequestException('Crédit de la recharge IA impossible.');
+  }
+
+  private async reverseTopUp(userId: string, reference: string): Promise<void> {
+    const { error } = await this.supabase.admin.rpc('reverse_ai_top_up', {
+      p_user_id: userId,
+      p_provider_reference: reference,
+      p_idempotency_key: `topup-refund:${reference}`,
+    });
+    if (error) throw new BadRequestException('Annulation de la recharge IA impossible.');
   }
 
   private parsePayload(rawBody: string): Record<string, unknown> {

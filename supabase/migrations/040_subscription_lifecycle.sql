@@ -142,3 +142,48 @@ $$;
 create unique index if not exists billing_pending_subscription_unique
   on public.billing_payments(subscription_id)
   where kind = 'SUBSCRIPTION' and status = 'PENDING';
+
+create or replace function public.reverse_ai_top_up(
+  p_user_id uuid,
+  p_provider_reference text,
+  p_idempotency_key text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_wallet_id uuid;
+  v_amount integer;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'AI wallet operations require the backend';
+  end if;
+
+  select wallet_id, amount into v_wallet_id, v_amount
+    from public.ai_wallet_transactions
+   where user_id = p_user_id
+     and provider_reference = p_provider_reference
+     and kind = 'TOP_UP'
+   limit 1;
+  if v_wallet_id is null then
+    return false;
+  end if;
+
+  insert into public.ai_wallet_transactions
+    (wallet_id, user_id, kind, amount, idempotency_key, provider, provider_reference)
+  values
+    (v_wallet_id, p_user_id, 'ADJUSTMENT', -v_amount, p_idempotency_key, 'GENIUSPAY', p_provider_reference)
+  on conflict (idempotency_key) do nothing;
+  if found then
+    update public.ai_wallets
+       set balance = balance - v_amount
+     where id = v_wallet_id and balance >= v_amount;
+    if not found then
+      raise exception 'AI wallet balance insufficient for refund';
+    end if;
+  end if;
+  return true;
+end;
+$$;
