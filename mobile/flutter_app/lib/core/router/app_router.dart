@@ -8,6 +8,7 @@ import '../../features/workspaces/presentation/workspace_selector_screen.dart';
 import '../../features/plans/presentation/plans_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/ai_wallet/presentation/ai_wallet_screen.dart';
+import '../../features/assistant/presentation/assistant_screen.dart';
 import '../../shared/widgets/app_states.dart';
 import '../../shared/widgets/placeholder_screen.dart';
 import 'app_routes.dart';
@@ -127,6 +128,10 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
       GoRoute(
         path: AppRoutes.aiWallet,
         builder: (_, _) => const AiWalletScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.assistant,
+        builder: (_, _) => const AssistantScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => WorkspaceShell(
