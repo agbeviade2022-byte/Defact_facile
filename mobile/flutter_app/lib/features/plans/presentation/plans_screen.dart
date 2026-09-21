@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
@@ -37,25 +38,113 @@ class PlansScreen extends ConsumerWidget {
                     Text('Choisissez le bon rythme', style: AppTypography.h1),
                     AppSpacing.gapSm,
                     Text(
-                      'Comparez les forfaits disponibles. L’activation et le paiement seront ajoutés dans la prochaine tranche.',
+                      'Comparez les forfaits et lancez le paiement sécurisé de votre espace.',
                       style: AppTypography.bodySecondary,
                     ),
                   ],
                 );
               }
-              return _PlanCard(plan: items[index - 1]);
+              return _PlanCard(
+                plan: items[index - 1],
+                onSubscribe: () =>
+                    _startSubscription(context, ref, items[index - 1]),
+              );
             },
           ),
         ),
       ),
     );
   }
+
+  Future<void> _startSubscription(
+    BuildContext context,
+    WidgetRef ref,
+    PlanSummary plan,
+  ) async {
+    final cycle = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: AppSpacing.screen,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Choisir une fréquence', style: AppTypography.h3),
+              AppSpacing.gapSm,
+              FilledButton(
+                onPressed: () => Navigator.pop(sheetContext, 'MONTHLY'),
+                child: Text(
+                  '${_formatAmount(plan.priceMonthly)} ${plan.currency}/mois',
+                ),
+              ),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(sheetContext, 'YEARLY'),
+                child: Text(
+                  '${_formatAmount(plan.priceYearly)} ${plan.currency}/an',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (cycle == null || !context.mounted) return;
+
+    try {
+      final checkout = await ref
+          .read(planRepositoryProvider)
+          .startSubscription(planId: plan.id, billingCycle: cycle);
+      if (!context.mounted) return;
+      await _showCheckout(context, checkout);
+    } on ApiException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  Future<void> _showCheckout(
+    BuildContext context,
+    SubscriptionCheckout checkout,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Paiement prêt'),
+        content: SelectableText(
+          'Ouvre ce lien pour payer :\n\n${checkout.checkoutUrl}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(
+                ClipboardData(text: checkout.checkoutUrl),
+              );
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            },
+            child: const Text('Copier le lien'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatAmount(double amount) => amount
+      .toStringAsFixed(0)
+      .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ' ');
 }
 
 class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan});
+  const _PlanCard({required this.plan, required this.onSubscribe});
 
   final PlanSummary plan;
+  final VoidCallback onSubscribe;
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +192,16 @@ class _PlanCard extends StatelessWidget {
                 text: members == null
                     ? 'Membres illimités'
                     : '$members membre(s)',
+              ),
+            ],
+            if (!isFree) ...[
+              AppSpacing.gapMd,
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onSubscribe,
+                  child: const Text('Choisir ce forfait'),
+                ),
               ),
             ],
           ],

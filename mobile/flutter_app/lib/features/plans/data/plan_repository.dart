@@ -81,4 +81,45 @@ class PlanRepository {
         .map(PlanSummary.fromJson)
         .toList();
   }
+
+  Future<SubscriptionCheckout> startSubscription({
+    required String planId,
+    required String billingCycle,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/subscriptions',
+        data: {'planId': planId, 'billingCycle': billingCycle},
+      );
+      return SubscriptionCheckout.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+}
+
+class SubscriptionCheckout {
+  const SubscriptionCheckout({
+    required this.subscriptionId,
+    required this.checkoutUrl,
+    required this.paymentUrl,
+    required this.reference,
+    required this.status,
+  });
+
+  factory SubscriptionCheckout.fromJson(Map<String, dynamic> json) {
+    return SubscriptionCheckout(
+      subscriptionId: json['subscriptionId'] as String,
+      checkoutUrl: json['checkoutUrl'] as String,
+      paymentUrl: json['paymentUrl'] as String,
+      reference: json['reference'] as String,
+      status: json['status'] as String,
+    );
+  }
+
+  final String subscriptionId;
+  final String checkoutUrl;
+  final String paymentUrl;
+  final String reference;
+  final String status;
 }
