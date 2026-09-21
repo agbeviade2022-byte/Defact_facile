@@ -36,7 +36,21 @@ describe('GeniusPayWebhookService', () => {
       data: { id: 'payment-1', status: 'SUCCEEDED', provider_reference: 'MTX-123' },
       error: null,
     });
-    const maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
+    const maybeSingle = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          id: 'payment-1',
+          status: 'PENDING',
+          provider_reference: 'MTX-123',
+          amount: 1500,
+          user_id: 'user-1',
+          kind: 'SUBSCRIPTION',
+          subscription_id: null,
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: null, error: null });
     const update = jest.fn().mockReturnValue({
       eq: jest.fn().mockReturnValue({
         eq: jest.fn().mockResolvedValue({ error: null }),

@@ -30,16 +30,24 @@ export class GeniusPayWebhookService {
     const status = this.statusForEvent(eventName);
     const { data: existing, error: lookupError } = await this.supabase.admin
       .from('billing_payments')
-      .select('id, status, provider_reference')
+      .select('id, status, provider_reference, amount, user_id, kind, subscription_id')
       .eq('provider', 'GENIUSPAY')
       .eq('provider_reference', reference)
       .maybeSingle();
     if (lookupError) throw new BadRequestException('Paiement GeniusPay introuvable.');
+    if (!existing) throw new BadRequestException('Paiement GeniusPay non initié.');
     if (existing && existing.status !== 'PENDING') {
       if (existing.status !== status) {
         throw new BadRequestException('Transition de paiement GeniusPay contradictoire.');
       }
       return { received: true, payment: existing };
+    }
+    const amount = this.readNumber(data, 'amount');
+    if (
+      (amount !== undefined && Number(existing.amount) !== amount) ||
+      existing.user_id !== userId
+    ) {
+      throw new BadRequestException('Données du paiement GeniusPay incohérentes.');
     }
 
     const { data: payment, error } = await this.supabase.admin
@@ -47,7 +55,7 @@ export class GeniusPayWebhookService {
       .upsert(
         {
           user_id: userId,
-          amount: this.readNumber(data, 'amount') ?? 0,
+          amount: Number(existing.amount),
           currency: this.readString(data, 'currency') ?? 'XOF',
           provider: 'GENIUSPAY',
           provider_reference: reference,
@@ -65,12 +73,22 @@ export class GeniusPayWebhookService {
     if (status === 'SUCCEEDED') {
       const subscriptionId = this.readString(metadata, 'subscription_id');
       if (subscriptionId) {
+        const { data: subscription } = await this.supabase.admin
+          .from('subscriptions')
+          .select('billing_cycle')
+          .eq('id', subscriptionId)
+          .eq('status', 'TRIALING')
+          .maybeSingle();
+        const start = new Date();
+        const end = new Date(start);
+        end.setMonth(end.getMonth() + (subscription?.billing_cycle === 'YEARLY' ? 12 : 1));
         await this.supabase.admin
           .from('subscriptions')
           .update({
             status: 'ACTIVE',
             payment_reference: reference,
-            current_period_start: new Date().toISOString(),
+            current_period_start: start.toISOString(),
+            current_period_end: end.toISOString(),
           })
           .eq('id', subscriptionId)
           .eq('status', 'TRIALING');
