@@ -92,6 +92,7 @@ export class GeniusPayWebhookService {
         end.setMonth(end.getMonth() + (subscription?.billing_cycle === 'YEARLY' ? 12 : 1));
         const { error: activationError } = await this.supabase.admin.rpc('activate_subscription', {
           p_subscription_id: subscriptionId,
+          p_user_id: userId,
           p_payment_reference: reference,
           p_period_start: start.toISOString(),
           p_period_end: end.toISOString(),

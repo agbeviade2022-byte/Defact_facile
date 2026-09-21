@@ -1475,6 +1475,7 @@ MIGRATIONS["040_subscription_lifecycle.sql"] = HEADER.format(
 ) + """
 create or replace function public.activate_subscription(
   p_subscription_id uuid,
+  p_user_id uuid,
   p_payment_reference text,
   p_period_start timestamptz,
   p_period_end timestamptz
@@ -1484,10 +1485,22 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_plan_id uuid;
+  v_grant_amount integer;
+  v_wallet_id uuid;
+  v_activated boolean;
 begin
   if coalesce(auth.role(), '') <> 'service_role' then
     raise exception 'Subscription lifecycle operations require the backend';
   end if;
+
+  select plan_id into v_plan_id
+    from public.subscriptions
+   where id = p_subscription_id;
+  select ai_credits_monthly into v_grant_amount
+    from public.plans
+   where id = v_plan_id;
 
   update public.subscriptions
      set status = 'ACTIVE',
@@ -1498,7 +1511,30 @@ begin
    where id = p_subscription_id
      and status in ('TRIALING', 'PAST_DUE', 'ACTIVE')
      and (status <> 'ACTIVE' or current_period_end is null or current_period_end <= p_period_start);
-  return found;
+  v_activated := found;
+  if v_activated and coalesce(v_grant_amount, 0) > 0 then
+    insert into public.ai_wallets (user_id)
+    values (p_user_id)
+    on conflict (user_id) do update set updated_at = now()
+    returning id into v_wallet_id;
+
+    insert into public.ai_wallet_transactions
+      (wallet_id, user_id, kind, amount, idempotency_key, provider_reference, metadata)
+    values
+      (v_wallet_id, p_user_id, 'PLAN_GRANT', v_grant_amount,
+       'plan:' || p_subscription_id || ':' || p_period_start,
+       p_payment_reference,
+       jsonb_build_object('subscription_id', p_subscription_id, 'period_end', p_period_end))
+    on conflict (idempotency_key) do nothing;
+
+    if found then
+      update public.ai_wallets
+         set balance = balance + v_grant_amount,
+             lifetime_credited = lifetime_credited + v_grant_amount
+       where id = v_wallet_id;
+    end if;
+  end if;
+  return v_activated;
 end;
 $$;
 
