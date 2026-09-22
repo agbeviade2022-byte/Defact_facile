@@ -4,104 +4,130 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/reference_ui.dart';
 import '../data/inventory_repository.dart';
 
-class InventoryScreen extends ConsumerWidget {
+class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
     final products = ref.watch(productsProvider);
     final stock = ref.watch(stockProvider);
+    final filtered = products.asData?.value.where((product) {
+      return product.name.toLowerCase().contains(_query.toLowerCase());
+    }).toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Stock'),
         actions: [
           IconButton(
-            onPressed: () => _openProduct(context, ref),
+            onPressed: () => _openProduct(context),
             icon: const Icon(Icons.add),
             tooltip: 'Nouveau produit',
           ),
         ],
       ),
-      body: products.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _InventoryError(
-          message: error is ApiException
-              ? error.message
-              : 'Erreur de chargement.',
-          onRetry: () {
-            ref.invalidate(productsProvider);
-            ref.invalidate(stockProvider);
-          },
-        ),
-        data: (items) {
-          final levels = stock.asData?.value ?? const <StockSummary>[];
-          final levelByProduct = {
-            for (final level in levels) level.productId: level,
-          };
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(productsProvider);
-              ref.invalidate(stockProvider);
-              await Future.wait([
-                ref.read(productsProvider.future),
-                ref.read(stockProvider.future),
-              ]);
-            },
-            child: items.isEmpty
-                ? ListView(
-                    padding: AppSpacing.screen,
-                    children: const [
-                      SizedBox(height: 96),
-                      Icon(Icons.inventory_2_outlined, size: 56),
-                      SizedBox(height: AppSpacing.md),
-                      Center(child: Text('Aucun produit enregistré.')),
-                    ],
-                  )
-                : ListView.separated(
-                    padding: AppSpacing.screen,
-                    itemCount: items.length,
-                    separatorBuilder: (_, _) => AppSpacing.gapSm,
-                    itemBuilder: (_, index) {
-                      final product = items[index];
-                      final level = levelByProduct[product.id];
-                      return Card(
-                        child: ListTile(
-                          onTap: product.trackStock
-                              ? () => _openMovement(context, ref, product)
-                              : null,
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.inventory_2_outlined),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: ReferenceSearchField(
+              hintText: 'Rechercher un article',
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+          Expanded(
+            child: products.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => _InventoryError(
+                message: error is ApiException
+                    ? error.message
+                    : 'Erreur de chargement.',
+                onRetry: () {
+                  ref.invalidate(productsProvider);
+                  ref.invalidate(stockProvider);
+                },
+              ),
+              data: (_) {
+                final levels = stock.asData?.value ?? const <StockSummary>[];
+                final levelByProduct = {
+                  for (final level in levels) level.productId: level,
+                };
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(productsProvider);
+                    ref.invalidate(stockProvider);
+                    await Future.wait([
+                      ref.read(productsProvider.future),
+                      ref.read(stockProvider.future),
+                    ]);
+                  },
+                  child: filtered!.isEmpty
+                      ? ReferenceEmptyState(
+                          icon: Icons.inventory_2_outlined,
+                          title: 'Aucun article',
+                          subtitle: 'Ajoutez vos produits et services pour les retrouver ici.',
+                          actionLabel: 'Nouvel article',
+                          onAction: () => _openProduct(context),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            AppSpacing.xs,
+                            AppSpacing.md,
+                            120,
                           ),
-                          title: Text(product.name),
-                          subtitle: Text(
-                            product.trackStock
-                                ? 'Stock : ${(level?.quantity ?? 0).toStringAsFixed(3)} ${product.unit}'
-                                : 'Service ou stock désactivé',
-                          ),
-                          trailing: Text(
-                            '${product.salePrice.toStringAsFixed(0)} XOF',
-                            style: AppTypography.body.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, _) => AppSpacing.gapSm,
+                          itemBuilder: (_, index) {
+                            final product = filtered[index];
+                            final level = levelByProduct[product.id];
+                            return ReferenceListCard(
+                              onTap: product.trackStock
+                                  ? () => _openMovement(context, ref, product)
+                                  : null,
+                              icon: Icons.inventory_2_outlined,
+                              title: product.name,
+                              subtitle: product.trackStock
+                                  ? 'Stock : ${(level?.quantity ?? 0).toStringAsFixed(3)} ${product.unit}'
+                                  : 'Service ou stock désactivé',
+                              trailing: Text(
+                                '${product.salePrice.toStringAsFixed(0)} XOF',
+                                style: AppTypography.body.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openProduct(context, ref),
+        onPressed: () => _openProduct(context),
         icon: const Icon(Icons.add),
         label: const Text('Nouveau produit'),
       ),
     );
   }
 
-  Future<void> _openProduct(BuildContext context, WidgetRef ref) async {
+  Future<void> _openProduct(BuildContext context) async {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,

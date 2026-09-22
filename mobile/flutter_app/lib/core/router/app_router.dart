@@ -23,10 +23,10 @@ final routerProvider = Provider<GoRouter>((ref) => buildRouter());
 
 const _personalDestinations = [
   ShellDestination(
-    route: AppRoutes.personalHome,
-    label: 'Accueil',
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
+    route: AppRoutes.personalInvoices,
+    label: 'Factures',
+    icon: Icons.receipt_long_outlined,
+    selectedIcon: Icons.receipt_long,
   ),
   ShellDestination(
     route: AppRoutes.personalQuotes,
@@ -35,38 +35,26 @@ const _personalDestinations = [
     selectedIcon: Icons.description,
   ),
   ShellDestination(
-    route: AppRoutes.personalInvoices,
-    label: 'Factures',
-    icon: Icons.receipt_long_outlined,
-    selectedIcon: Icons.receipt_long,
-  ),
-  ShellDestination(
     route: AppRoutes.personalCustomers,
     label: 'Clients',
     icon: Icons.people_outline,
     selectedIcon: Icons.people,
   ),
   ShellDestination(
+    route: AppRoutes.personalInventory,
+    label: 'Articles',
+    icon: Icons.inventory_2_outlined,
+    selectedIcon: Icons.inventory_2,
+  ),
+  ShellDestination(
     route: AppRoutes.personalMore,
-    label: 'Plus',
-    icon: Icons.more_horiz,
-    selectedIcon: Icons.more_horiz,
+    label: 'Paramètres',
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings,
   ),
 ];
 
 const _businessDestinations = [
-  ShellDestination(
-    route: AppRoutes.businessHome,
-    label: 'Accueil',
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
-  ),
-  ShellDestination(
-    route: AppRoutes.businessSales,
-    label: 'Ventes',
-    icon: Icons.point_of_sale_outlined,
-    selectedIcon: Icons.point_of_sale,
-  ),
   ShellDestination(
     route: AppRoutes.businessInvoices,
     label: 'Factures',
@@ -74,10 +62,10 @@ const _businessDestinations = [
     selectedIcon: Icons.receipt_long,
   ),
   ShellDestination(
-    route: AppRoutes.businessInventory,
-    label: 'Stock',
-    icon: Icons.inventory_2_outlined,
-    selectedIcon: Icons.inventory_2,
+    route: AppRoutes.businessSales,
+    label: 'Devis',
+    icon: Icons.description_outlined,
+    selectedIcon: Icons.description,
   ),
   ShellDestination(
     route: AppRoutes.businessCustomers,
@@ -86,10 +74,16 @@ const _businessDestinations = [
     selectedIcon: Icons.people,
   ),
   ShellDestination(
+    route: AppRoutes.businessInventory,
+    label: 'Stock',
+    icon: Icons.inventory_2_outlined,
+    selectedIcon: Icons.inventory_2,
+  ),
+  ShellDestination(
     route: AppRoutes.businessMore,
-    label: 'Plus',
-    icon: Icons.more_horiz,
-    selectedIcon: Icons.more_horiz,
+    label: 'Paramètres',
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings,
   ),
 ];
 
@@ -145,13 +139,17 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
           navigationShell: shell,
         ),
         branches: [
-          _branch(
-            _placeholder(
-              AppRoutes.personalHome,
-              'Accueil',
-              'Mission 03',
-              Icons.home_outlined,
-            ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.personalHome,
+                builder: (_, _) => const InvoicesScreen(),
+              ),
+              GoRoute(
+                path: AppRoutes.personalInvoices,
+                builder: (_, _) => const InvoicesScreen(),
+              ),
+            ],
           ),
           _branch(
             GoRoute(
@@ -161,14 +159,14 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
           ),
           _branch(
             GoRoute(
-              path: AppRoutes.personalInvoices,
-              builder: (_, _) => const InvoicesScreen(),
+              path: AppRoutes.personalCustomers,
+              builder: (_, _) => const CustomersScreen(),
             ),
           ),
           _branch(
             GoRoute(
-              path: AppRoutes.personalCustomers,
-              builder: (_, _) => const CustomersScreen(),
+              path: AppRoutes.personalInventory,
+              builder: (_, _) => const InventoryScreen(),
             ),
           ),
           _branch(
@@ -185,26 +183,22 @@ GoRouter buildRouter({String initialLocation = AppRoutes.splash}) {
           navigationShell: shell,
         ),
         branches: [
-          _branch(
-            _placeholder(
-              AppRoutes.businessHome,
-              'Accueil',
-              'Mission 03',
-              Icons.home_outlined,
-            ),
-          ),
-          _branch(
-            _placeholder(
-              AppRoutes.businessSales,
-              'Ventes',
-              'Mission 06',
-              Icons.point_of_sale_outlined,
-            ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.businessHome,
+                builder: (_, _) => const InvoicesScreen(),
+              ),
+              GoRoute(
+                path: AppRoutes.businessInvoices,
+                builder: (_, _) => const InvoicesScreen(),
+              ),
+            ],
           ),
           _branch(
             GoRoute(
-              path: AppRoutes.businessInvoices,
-              builder: (_, _) => const InvoicesScreen(),
+              path: AppRoutes.businessSales,
+              builder: (_, _) => const QuotesScreen(),
             ),
           ),
           _branch(

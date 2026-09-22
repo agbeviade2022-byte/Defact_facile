@@ -4,69 +4,104 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/reference_ui.dart';
 import '../../payments/data/payment_repository.dart';
 import '../../quotes/data/quote_repository.dart';
 import '../data/invoice_repository.dart';
 
-class InvoicesScreen extends ConsumerWidget {
+class InvoicesScreen extends ConsumerStatefulWidget {
   const InvoicesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InvoicesScreen> createState() => _InvoicesScreenState();
+}
+
+class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
     final invoices = ref.watch(invoicesProvider);
+    final filtered = invoices.asData?.value.where((invoice) {
+      final query = _query.toLowerCase();
+      return invoice.number.toLowerCase().contains(query) ||
+          invoice.status.toLowerCase().contains(query) ||
+          invoice.issueDate.toLowerCase().contains(query);
+    }).toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Factures'),
         actions: [
           IconButton(
-            onPressed: () => _openCreate(context, ref),
+            onPressed: () => _openCreate(context),
             icon: const Icon(Icons.add),
             tooltip: 'Nouvelle facture',
           ),
         ],
       ),
-      body: invoices.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _InvoiceError(
-          message: error is ApiException
-              ? error.message
-              : 'Erreur de chargement.',
-          onRetry: () => ref.invalidate(invoicesProvider),
-        ),
-        data: (items) => RefreshIndicator(
-          onRefresh: () => ref.refresh(invoicesProvider.future),
-          child: items.isEmpty
-              ? ListView(
-                  padding: AppSpacing.screen,
-                  children: const [
-                    SizedBox(height: 96),
-                    Icon(Icons.receipt_long_outlined, size: 56),
-                    SizedBox(height: AppSpacing.md),
-                    Center(child: Text('Aucune facture enregistrée.')),
-                    SizedBox(height: AppSpacing.sm),
-                    Center(child: Text('Convertissez un devis en facture.')),
-                  ],
-                )
-              : ListView.separated(
-                  padding: AppSpacing.screen,
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => AppSpacing.gapSm,
-                  itemBuilder: (_, index) => _InvoiceTile(
-                    invoice: items[index],
-                    onTap: () => _openPayment(context, ref, items[index]),
-                  ),
-                ),
-        ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: ReferenceSearchField(
+              hintText: 'Rechercher une facture',
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+          Expanded(
+            child: invoices.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => _InvoiceError(
+                message: error is ApiException
+                    ? error.message
+                    : 'Erreur de chargement.',
+                onRetry: () => ref.invalidate(invoicesProvider),
+              ),
+              data: (_) => RefreshIndicator(
+                onRefresh: () => ref.refresh(invoicesProvider.future),
+                child: filtered!.isEmpty
+                    ? ReferenceEmptyState(
+                        icon: Icons.receipt_long_outlined,
+                        title: 'Aucune facture',
+                        subtitle: 'Créez votre première facture en quelques secondes.',
+                        actionLabel: 'Nouvelle facture',
+                        onAction: () => _openCreate(context),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          AppSpacing.xs,
+                          AppSpacing.md,
+                          120,
+                        ),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => AppSpacing.gapSm,
+                        itemBuilder: (_, index) => _InvoiceTile(
+                          invoice: filtered[index],
+                          onTap: filtered[index].amountDue > 0
+                              ? () => _openPayment(context, filtered[index])
+                              : null,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCreate(context, ref),
+        onPressed: () => _openCreate(context),
         icon: const Icon(Icons.add),
         label: const Text('Nouvelle facture'),
       ),
     );
   }
 
-  Future<void> _openCreate(BuildContext context, WidgetRef ref) async {
+  Future<void> _openCreate(BuildContext context) async {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -77,7 +112,6 @@ class InvoicesScreen extends ConsumerWidget {
 
   Future<void> _openPayment(
     BuildContext context,
-    WidgetRef ref,
     InvoiceSummary invoice,
   ) async {
     final paid = await showModalBottomSheet<bool>(
@@ -90,26 +124,23 @@ class InvoicesScreen extends ConsumerWidget {
 }
 
 class _InvoiceTile extends StatelessWidget {
-  const _InvoiceTile({required this.invoice, required this.onTap});
+  const _InvoiceTile({required this.invoice, this.onTap});
 
   final InvoiceSummary invoice;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        onTap: invoice.amountDue > 0 ? onTap : null,
-        leading: const CircleAvatar(child: Icon(Icons.receipt_long_outlined)),
-        title: Text(invoice.number),
-        subtitle: Text(
+    return ReferenceListCard(
+      icon: Icons.receipt_long_outlined,
+      title: invoice.number,
+      subtitle:
           '${invoice.status} · ${invoice.issueDate}'
           '${invoice.amountDue > 0 ? ' · Reste ${invoice.amountDue.toStringAsFixed(0)} ${invoice.currency}' : ''}',
-        ),
-        trailing: Text(
-          '${invoice.total.toStringAsFixed(0)} ${invoice.currency}',
-          style: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
-        ),
+      onTap: onTap,
+      trailing: Text(
+        '${invoice.total.toStringAsFixed(0)} ${invoice.currency}',
+        style: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -352,7 +383,7 @@ class _InvoiceError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: AppSpacing.screen,
         child: Column(
           mainAxisSize: MainAxisSize.min,

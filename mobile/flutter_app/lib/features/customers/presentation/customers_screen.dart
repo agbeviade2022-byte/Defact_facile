@@ -4,69 +4,100 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/reference_ui.dart';
 import '../data/customer_repository.dart';
 
-class CustomersScreen extends ConsumerWidget {
+class CustomersScreen extends ConsumerStatefulWidget {
   const CustomersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CustomersScreen> createState() => _CustomersScreenState();
+}
+
+class _CustomersScreenState extends ConsumerState<CustomersScreen> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
     final customers = ref.watch(customersProvider);
+    final filtered = customers.asData?.value.where((customer) {
+      final query = _query.toLowerCase();
+      return customer.name.toLowerCase().contains(query) ||
+          (customer.email?.toLowerCase().contains(query) ?? false) ||
+          (customer.phone?.toLowerCase().contains(query) ?? false) ||
+          (customer.city?.toLowerCase().contains(query) ?? false);
+    }).toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Clients'),
         actions: [
           IconButton(
-            onPressed: () => _openCreate(context, ref),
+            onPressed: () => _openCreate(context),
             icon: const Icon(Icons.person_add_alt_1),
             tooltip: 'Ajouter un client',
           ),
         ],
       ),
-      body: customers.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _CustomersError(
-          message: error is ApiException
-              ? error.message
-              : 'Erreur de chargement.',
-          onRetry: () => ref.invalidate(customersProvider),
-        ),
-        data: (items) => RefreshIndicator(
-          onRefresh: () => ref.refresh(customersProvider.future),
-          child: items.isEmpty
-              ? ListView(
-                  padding: AppSpacing.screen,
-                  children: const [
-                    SizedBox(height: 96),
-                    Icon(Icons.people_outline, size: 56),
-                    SizedBox(height: AppSpacing.md),
-                    Center(child: Text('Aucun client enregistré.')),
-                    SizedBox(height: AppSpacing.sm),
-                    Center(
-                      child: Text(
-                        'Ajoutez votre premier client pour commencer.',
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: ReferenceSearchField(
+              hintText: 'Rechercher un client',
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+          Expanded(
+            child: customers.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => _CustomersError(
+                message: error is ApiException
+                    ? error.message
+                    : 'Erreur de chargement.',
+                onRetry: () => ref.invalidate(customersProvider),
+              ),
+              data: (_) => RefreshIndicator(
+                onRefresh: () => ref.refresh(customersProvider.future),
+                child: filtered!.isEmpty
+                    ? ReferenceEmptyState(
+                        icon: Icons.people_outline,
+                        title: 'Aucun client',
+                        subtitle:
+                            'Ajoutez votre premier client pour commencer.',
+                        actionLabel: 'Nouveau client',
+                        onAction: () => _openCreate(context),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          AppSpacing.xs,
+                          AppSpacing.md,
+                          120,
+                        ),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => AppSpacing.gapSm,
+                        itemBuilder: (_, index) =>
+                            _CustomerTile(customer: filtered[index]),
                       ),
-                    ),
-                  ],
-                )
-              : ListView.separated(
-                  padding: AppSpacing.screen,
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => AppSpacing.gapSm,
-                  itemBuilder: (_, index) =>
-                      _CustomerTile(customer: items[index]),
-                ),
-        ),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCreate(context, ref),
+        onPressed: () => _openCreate(context),
         icon: const Icon(Icons.person_add_alt_1),
         label: const Text('Nouveau client'),
       ),
     );
   }
 
-  Future<void> _openCreate(BuildContext context, WidgetRef ref) async {
+  Future<void> _openCreate(BuildContext context) async {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -88,18 +119,13 @@ class _CustomerTile extends StatelessWidget {
       customer.phone,
       customer.city,
     ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          child: Icon(
-            customer.type == 'COMPANY'
-                ? Icons.business_outlined
-                : Icons.person_outline,
-          ),
-        ),
-        title: Text(customer.name),
-        subtitle: detail.isEmpty ? null : Text(detail),
-      ),
+    return ReferenceListCard(
+      icon: customer.type == 'COMPANY'
+          ? Icons.business_outlined
+          : Icons.person_outline,
+      title: customer.name,
+      subtitle: detail.isEmpty ? null : detail,
+      trailing: const Icon(Icons.chevron_right),
     );
   }
 }

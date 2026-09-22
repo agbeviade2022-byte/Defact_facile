@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/reference_ui.dart';
 import '../data/quote_repository.dart';
 
 class QuotesScreen extends ConsumerWidget {
@@ -34,21 +35,20 @@ class QuotesScreen extends ConsumerWidget {
         data: (items) => RefreshIndicator(
           onRefresh: () => ref.refresh(quotesProvider.future),
           child: items.isEmpty
-              ? ListView(
-                  padding: AppSpacing.screen,
-                  children: const [
-                    SizedBox(height: 96),
-                    Icon(Icons.description_outlined, size: 56),
-                    SizedBox(height: AppSpacing.md),
-                    Center(child: Text('Aucun devis enregistré.')),
-                    SizedBox(height: AppSpacing.sm),
-                    Center(
-                      child: Text('Créez votre premier devis pour commencer.'),
-                    ),
-                  ],
+              ? ReferenceEmptyState(
+                  icon: Icons.description_outlined,
+                  title: 'Aucun devis',
+                  subtitle: 'Créez votre premier devis pour commencer.',
+                  actionLabel: 'Nouveau devis',
+                  onAction: () => _openCreate(context, ref),
                 )
               : ListView.separated(
-                  padding: AppSpacing.screen,
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.xs,
+                    AppSpacing.md,
+                    120,
+                  ),
                   itemCount: items.length,
                   separatorBuilder: (_, _) => AppSpacing.gapSm,
                   itemBuilder: (_, index) => _QuoteTile(quote: items[index]),
@@ -80,15 +80,13 @@ class _QuoteTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.description_outlined)),
-        title: Text(quote.number),
-        subtitle: Text('${quote.status} · ${quote.issueDate}'),
-        trailing: Text(
-          '${quote.total.toStringAsFixed(0)} ${quote.currency}',
-          style: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
-        ),
+    return ReferenceListCard(
+      icon: Icons.description_outlined,
+      title: quote.number,
+      subtitle: '${quote.status} · ${quote.issueDate}',
+      trailing: Text(
+        '${quote.total.toStringAsFixed(0)} ${quote.currency}',
+        style: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }

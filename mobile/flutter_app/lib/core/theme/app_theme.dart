@@ -46,28 +46,31 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       textTheme: textTheme,
       fontFamily: AppTypography.fontFamily,
-      splashFactory: InkSparkle.splashFactory,
+      splashFactory: InkRipple.splashFactory,
       dividerTheme: const DividerThemeData(
         color: AppColors.divider,
         thickness: 1,
         space: 1,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.h3,
+        toolbarHeight: 80,
+        titleTextStyle: AppTypography.h3.copyWith(
+          color: AppColors.onPrimary,
+          fontSize: 24,
+        ),
+        iconTheme: const IconThemeData(color: AppColors.onPrimary),
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
-        elevation: 0,
+        elevation: 1,
+        shadowColor: const Color(0x22000000),
         margin: EdgeInsets.zero,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppRadius.card,
-          side: BorderSide(color: AppColors.border),
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.card),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -141,14 +144,21 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.primarySoft,
-        height: 64,
-        labelTextStyle: WidgetStatePropertyAll(textTheme.labelMedium),
+        indicatorColor: Colors.transparent,
+        height: 76,
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => textTheme.labelMedium!.copyWith(
+            color: states.contains(WidgetState.selected)
+                ? AppColors.primary
+                : AppColors.disabled,
+          ),
+        ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
             color: states.contains(WidgetState.selected)
-                ? AppColors.primaryDark
-                : AppColors.textSecondary,
+                ? AppColors.primary
+                : AppColors.disabled,
+            size: 24,
           ),
         ),
       ),
@@ -162,6 +172,8 @@ abstract final class AppTheme {
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.sheet),
         showDragHandle: true,
+        dragHandleColor: AppColors.border,
+        dragHandleSize: Size(42, 4),
       ),
       dialogTheme: const DialogThemeData(
         backgroundColor: AppColors.surface,
@@ -176,7 +188,10 @@ abstract final class AppTheme {
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.card),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(18)),
+        ),
+        elevation: 4,
       ),
     );
   }

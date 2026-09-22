@@ -15,6 +15,7 @@ abstract final class AppRoutes {
   static const String personalQuotes = '/p/quotes';
   static const String personalInvoices = '/p/invoices';
   static const String personalCustomers = '/p/customers';
+  static const String personalInventory = '/p/inventory';
   static const String personalMore = '/p/more';
 
   // Business workspace: Accueil / Ventes / Factures / Stock / Clients / Plus

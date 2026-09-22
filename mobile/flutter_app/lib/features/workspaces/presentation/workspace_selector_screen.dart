@@ -79,8 +79,8 @@ class WorkspaceSelectorScreen extends ConsumerWidget {
       if (!context.mounted) return;
       context.go(
         workspace.kind == WorkspaceKind.personal
-            ? AppRoutes.personalHome
-            : AppRoutes.businessHome,
+            ? AppRoutes.personalInvoices
+            : AppRoutes.businessInvoices,
       );
     } on ApiException catch (error) {
       if (context.mounted) {
