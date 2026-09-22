@@ -142,7 +142,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   if (!auth.isConfigured) ...[
                     AppSpacing.gapSm,
                     const Text(
-                      'Configure Supabase pour activer la connexion.',
+                      'Configurez l’API pour activer la connexion.',
                       textAlign: TextAlign.center,
                     ),
                   ],

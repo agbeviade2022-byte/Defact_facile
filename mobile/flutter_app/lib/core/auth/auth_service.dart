@@ -80,25 +80,27 @@ class AuthService {
   late final StreamSubscription<AuthState>? _authSubscription;
   bool _googleInitialized = false;
 
-  bool get isConfigured => _client != null;
+  bool get isConfigured => AppConfig.apiBaseUrl.isNotEmpty;
 
   Future<void> sendEmailCode(String email) async {
-    _requireClient();
-    await _client!.auth.signInWithOtp(email: email, shouldCreateUser: true);
+    await _post<void>('${AppConfig.apiBaseUrl}/auth/email/request-code', {
+      'email': email,
+    });
   }
 
-  Future<AuthResponse> verifyEmailCode({
+  Future<void> verifyEmailCode({
     required String email,
     required String token,
   }) async {
-    _requireClient();
-    final response = await _client!.auth.verifyOTP(
-      email: email,
-      token: token,
-      type: OtpType.email,
+    final response = await _post<Map<String, dynamic>>(
+      '${AppConfig.apiBaseUrl}/auth/email/verify-code',
+      {'email': email, 'code': token},
     );
-    _setAccessToken(response.session?.accessToken);
-    return response;
+    final accessToken = response.data?['accessToken'];
+    if (accessToken is! String || accessToken.isEmpty) {
+      throw AuthException('Le serveur n’a pas fourni de session e-mail.');
+    }
+    _setAccessToken(accessToken);
   }
 
   Future<bool> signInWithGoogle() async {
@@ -149,10 +151,16 @@ class AuthService {
     _ref.read(accessTokenProvider.notifier).setToken(token);
   }
 
-  void _requireClient() {
-    if (_client == null) {
+  Future<Response<T>> _post<T>(String path, Map<String, String> data) async {
+    try {
+      return await Dio().post<T>(path, data: data);
+    } on DioException catch (error) {
+      final body = error.response?.data;
+      final message = body is Map<String, dynamic> ? body['message'] : null;
       throw AuthException(
-        'Supabase Auth n’est pas configuré pour cet environnement.',
+        message is String
+            ? message
+            : 'Impossible de se connecter pour le moment.',
       );
     }
   }
