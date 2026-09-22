@@ -1,0 +1,7 @@
+{
+  "APP_ENV": "production",
+  "API_BASE_URL": "https://api.defactfacile.com/api/v1",
+  "SUPABASE_URL": "https://YOUR-PROD-PROJECT.supabase.co",
+  "SUPABASE_ANON_KEY": "",
+  "GOOGLE_WEB_CLIENT_ID": "43496767135-76ck11q98ljbg9m4b5qlfb1m2frofrfp.apps.googleusercontent.com"
+}

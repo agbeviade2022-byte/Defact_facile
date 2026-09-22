@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (NestJS)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - run: npm run test:e2e -- --ci
+      - run: npm run build
+      - name: Dependency audit (high+)
+        run: |
+          if ! npm audit --audit-level=high; then
+            echo "::warning::npm audit reported unresolved high-severity advisories; see the audit output above."
+          fi
+
+  mobile:
+    name: Mobile (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/flutter_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze --fatal-infos
+      - run: flutter test
+      - run: flutter build web --release --dart-define-from-file=env/development.json
+
+  database:
+    name: Database (Supabase migrations)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: defact_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Apply all migrations in order
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/defact_test
+        run: supabase/scripts/validate_migrations.sh
+      - name: Every public table must have RLS enabled
+        env:
+          PGPASSWORD: postgres
+        run: |
+          missing=$(psql -h localhost -U postgres -d defact_test -At -c \
+            "select tablename from pg_tables where schemaname='public' and not rowsecurity;")
+          if [ -n "$missing" ]; then echo "Tables without RLS: $missing"; exit 1; fi
+
+  secrets-scan:
+    name: Secrets scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
